@@ -19,7 +19,7 @@ CozyNSM is a Network Security Monitoring platform designed to be used by a tacti
 * [Logstash](https://github.com/elastic/logstash) (data processing)
 * [Elasticsearch](https://github.com/elastic/elasticsearch) (datastore)
 * [Kibana](https://github.com/elastic/kibana) (data visualization)
-* [TopBeat](infrastructure metrics)
+* [TopBeat](https://www.elastic.co/downloads/beats/topbeat) (infrastructure metrics)
 * [Suricata](https://suricata-ids.org/) (signature-based IDS)
 * [FreeIPA](https://www.freeipa.org/page/Main_Page) (DNS, NTP, SSO)
 * [Gogs](https://github.com/gogits/gogs) (git and wiki)
