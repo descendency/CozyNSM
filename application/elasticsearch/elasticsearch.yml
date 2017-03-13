@@ -1,0 +1,24 @@
+cluster.name: CozyStack
+node.name: "Cozy Master"
+node.master: true
+node.data: true
+network.host: 0.0.0.0
+#xpack.security.enabled: true
+#xpack.monitoring.enabled: true
+#xpack.graph.enabled: true
+#xpack.watcher.enabled: true
+#xpack:
+#  security:
+#    authc:
+#      realms:
+#        ldap1:
+#          type: ldap
+#          order: 0
+#          url: "ldap://ipa:389"
+#          bind_dn: "uid=admin,cn=users,cn=accounts,IPADOMAIN"
+#          bind_password: IPAPASS
+#          user_search:
+#            base_dn: "cn=users,cn=accounts,IPADOMAIN"
+#            attribute: uid
+#          group_search:
+#            base_dn: "cn=groups,cn=accounts,IPADOMAIN"
