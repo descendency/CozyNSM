@@ -1,8 +1,0 @@
-server.host: '0.0.0.0'
-elasticsearch.url: 'http://elasticsearch:9200'
-#elasticsearch.username: "elastic"
-#elasticsearch.password: "changeme"
-#xpack.security.enabled: true
-#xpack.monitoring.enabled: true
-#xpack.graph.enabled: true
-#xpack.reporting.enabled: true
