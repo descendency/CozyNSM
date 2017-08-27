@@ -1,0 +1,32 @@
+cluster.name: CozyStack
+node.name: "CozySearch"
+node.master: false
+node.data: false
+network.host: 0.0.0.0
+network.publish_host: ES_IP
+discovery.zen.ping.unicast.hosts: ["es.LOCALDOMAIN"]
+xpack.security.enabled: true
+xpack.monitoring.enabled: true
+xpack.graph.enabled: true
+xpack.watcher.enabled: true
+xpack.ssl.key:                     /usr/share/elasticsearch/config/x-pack/CozySearch.key
+xpack.ssl.certificate:             /usr/share/elasticsearch/config/x-pack/CozySearch.crt
+xpack.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/x-pack/ca.crt" ]
+xpack.security.transport.ssl.enabled: true
+xpack.ssl.verification_mode: certificate
+xpack.security.http.ssl.enabled: true
+xpack:
+  security:
+    authc:
+      realms:
+        ldap1:
+          type: ldap
+          order: 0
+          url: "ldap://IPA_IP:389"
+          bind_dn: "uid=admin,cn=users,cn=accounts,IPADOMAIN"
+          bind_password: IPAPASS
+          user_search:
+            base_dn: "cn=users,cn=accounts,IPADOMAIN"
+            attribute: uid
+          group_search:
+            base_dn: "cn=groups,cn=accounts,IPADOMAIN"

@@ -1,0 +1,2 @@
+superuser:
+  - "cn=users,cn=groups,cn=accounts,IPADOMAIN"

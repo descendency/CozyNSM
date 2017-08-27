@@ -1,0 +1,7 @@
+instances:
+  - name: "CozyMaster"
+  - name: "CozySearch"
+  - name: "kibana"
+  - name: "Logstash"
+  - name: "FileBeat"
+CENSOR
