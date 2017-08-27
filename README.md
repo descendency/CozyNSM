@@ -26,8 +26,8 @@ CozyNSM 'requires' the following:
 * Matthew Jarvis (https://github.com/descendency)
 * Joseph Winchell (https://github.com/wiinches)
 
-### SPECIAL THANKS 
-The Missouri National Guard (MoCyber). Their ROCKNSM platform was the        
+### SPECIAL THANKS
+The Missouri National Guard (MoCyber). Their [ROCKNSM](http://rocknsm.io/) platform was the
 inspiration for this project. Not only did they provide an awesome platform
 and ideas, but also mentorship (and lots of troubleshooting).
 
@@ -37,10 +37,10 @@ breaking and demanding as much as you did, because now it is significantly
 better than before.                                                          
 
 
-Source files needed for build:
+[Source files needed for build](https://www.dropbox.com/s/ptl9sm9ze7nnmxd/server.tar.gz?dl=0)
 
 
-Install Guide:
+[Install Guide](https://github.com/descendency/CozyNSM/blob/master/INSTALL.md)
 
 
-CentOS 7.2 Minimal:
+[CentOS 7.2 Minimal](https://www.dropbox.com/s/pfoxtar2dpasg5o/CentOS-7-x86_64-Minimal-1511.iso?dl=0)
