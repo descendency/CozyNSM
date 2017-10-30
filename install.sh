@@ -69,35 +69,17 @@ IPCOUNTER=0
 tar xzvf server.tar.gz
 
 # Locally installs required RPMs for every application.
-yum -y localinstall rpm/bro/*.rpm rpm/filebeat/*.rpm rpm/docker/*.rpm
-# This line must be done separate... not sure why. rpm/*/*.rpm would be better
-# but the files in this directory breaks it.
-yum -y localinstall rpm/stenographer/*.rpm
-
-yum -y localinstall rpm/moloch/*.rpm
-
-yum -y localinstall rpm/ipa-client/*.rpm
-
-# Automates the sysctl commands below, on boot
-echo "net.ipv4.conf.all.forwarding=1" >> /usr/lib/sysctl.d/00-system.conf
-echo "vm.max_map_count=1073741824" >> /usr/lib/sysctl.d/00-system.conf
-
-# Allow IPA admins to sudo.
-echo -e "%admins ALL=(ALL)\tALL\n" >> /etc/sudoers
+yum -y localinstall rpm/*/*.rpm
 
 # Points the server to its proper DNS server (FreeIPA).
 echo -e "\nnameserver $IPA_IP\n" >> /etc/resolv.conf
 
-# Improve Query time in Splunk and ElasticSearch.
-cp initd/disable-transparent-hugepages /etc/init.d/disable-transparent-hugepages
-chmod 755 /etc/init.d/disable-transparent-hugepages
-chkconfig --add disable-transparent-hugepages
+# Allow IPA admins to sudo.
+echo -e "%admins ALL=(ALL)\tALL\n" >> /etc/sudoers
 
-# Routes packets internally for docker
-sysctl -w net.ipv4.conf.all.forwarding=1
-
-# Fixes an ElasticSearch issue in 5.x+
-sysctl -w vm.max_map_count=1073741824
+#------------------------------------------------------------------------------#
+# Beginning: Sensor Configuration                                              #
+#------------------------------------------------------------------------------#
 
 # Creating directories ahead of install for scripted ELK configuration.
 mkdir -p /data/bro/current
@@ -105,11 +87,6 @@ mkdir -p /data/bro/spool
 
 # Create CozyStack installed event.
 echo "{\"ts\":\"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\", \"source\":\"Install Script\", \"message\": \"CozyStack installed. This is needed for ELK to initialize correctly.\"}" > /data/bro/current/cozy.log
-
-# Generate SSL certs
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/nginx.key -out nginx/nginx.crt -subj "/C=US/ST=/L=/O=CozyStack/OU=CozyStack/CN=$DOMAIN"
-openssl req -out nginx/nginx.csr -key nginx/nginx.key -new -subj "/C=US/ST=/L=/O=CozyStack/OU=CozyStack/CN=$DOMAIN"
-cat nginx/nginx.crt nginx/nginx.key > nginx/nginx.pem
 
 ################################################################################
 # INSTALL: Bro NSM                                                             #
@@ -208,6 +185,35 @@ if $ENABLE_ELK; then
     systemctl enable filebeat
     systemctl start filebeat
 fi
+
+#------------------------------------------------------------------------------#
+# END: Sensor Configuration                                                    #
+#------------------------------------------------------------------------------#
+
+#------------------------------------------------------------------------------#
+# Beginning: Application Configuration                                         #
+#------------------------------------------------------------------------------#
+
+# Automates the sysctl commands below, on boot
+echo "net.ipv4.conf.all.forwarding=1" >> /usr/lib/sysctl.d/00-system.conf
+echo "vm.max_map_count=1073741824" >> /usr/lib/sysctl.d/00-system.conf
+
+# Improve Query time in Splunk and ElasticSearch.
+cp initd/disable-transparent-hugepages /etc/init.d/disable-transparent-hugepages
+chmod 755 /etc/init.d/disable-transparent-hugepages
+chkconfig --add disable-transparent-hugepages
+
+# Routes packets internally for docker
+sysctl -w net.ipv4.conf.all.forwarding=1
+
+# Fixes an ElasticSearch issue in 5.x+
+sysctl -w vm.max_map_count=1073741824
+
+# Generate SSL certs
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/nginx.key -out nginx/nginx.crt -subj "/C=US/ST=/L=/O=CozyStack/OU=CozyStack/CN=$DOMAIN"
+openssl req -out nginx/nginx.csr -key nginx/nginx.key -new -subj "/C=US/ST=/L=/O=CozyStack/OU=CozyStack/CN=$DOMAIN"
+cat nginx/nginx.crt nginx/nginx.key > nginx/nginx.pem
+
 ################################################################################
 # INSTALL: Docker                                                              #
 ################################################################################
@@ -486,7 +492,7 @@ if $ENABLE_TOOLS; then
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
     docker exec -itu root gogs mkdir /app/certs
-    docker cp nginx/nginx.key proxy:/app/certs/nginx.key
+    docker cp nginx/nginx.key gogs:/app/certs/nginx.key
     docker cp nginx/nginx.crt gogs:/app/certs/nginx.crt
     docker restart gogs
 ################################################################################
@@ -601,7 +607,9 @@ docker restart gogs
 
 # OwnCloud
 docker exec -itu root owncloud a2enmod ssl
-docker cp 000-default.conf owncloud:/etc/apache2/sites-available/000-default.conf
+sed -e "s/DOMAINNAME/cloud.$DOMAIN/g" -i owncloud/000-default.conf
+docker exec -itu root owncloud chmod a+w /var/www/html
+docker cp owncloud/000-default.conf owncloud:/etc/apache2/sites-available/000-default.conf
 docker cp nginx/nginx.crt owncloud:/etc/ssl/certs/nginx.crt
 docker cp nginx/nginx.key owncloud:/etc/ssl/certs/nginx.key
 docker exec -itu www-data owncloud php occ maintenance:install --database="sqlite" --database-name="owncloud" --database-table-prefix="oc_" --admin-user "cozyadmin" --admin-pass "$IPA_ADMIN_PASSWORD"
@@ -623,13 +631,13 @@ docker exec -itu www-data owncloud php occ ldap:set-config '' ldapUserDisplayNam
 docker exec -itu www-data owncloud php occ ldap:set-config '' ldapUserFilterObjectclass "posixaccount"
 docker exec -itu www-data owncloud php occ ldap:set-config '' ldapUserFilter "(|(objectclass=person))"
 docker exec -itu www-data owncloud php occ ldap:set-config '' ldapLoginFilter "(&(|(objectclass=person))(uid=%uid))"
-docker exec -itu www-data owncloud php occ config:system:set trusted_domains 2 --value=cloud.cozy.lan
+docker exec -itu www-data owncloud php occ config:system:set trusted_domains 2 --value=cloud.$DOMAIN
 docker restart owncloud
 
 ################################################################################
 # INSTALL: Splunk Forwarders                                                   #
 ################################################################################
-# ???
+#
 ################################################################################
 # INSTALL: NGINX Reverse Proxy                                                 #
 ################################################################################
@@ -667,7 +675,7 @@ docker restart proxy
 ################################################################################
 # INSTALL: File Scanning Framework                                             #
 ################################################################################
-# ???
+#
 
 ################################################################################
 # CONFIGURE: DNS                                                               #
