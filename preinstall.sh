@@ -1,5 +1,13 @@
 mkdir -p ./rpm/updates
 mkdir -p ./rpm/extras
+mkdir -p ./images
+mkdir -p ./tar/bro
+mkdir -p ./tar/stenographer
+mkdir -p ./rpm/docker
+mkdir -p ./rpm/ipa-client
+mkdir -p ./rpm/filebeat
+mkdir -p ./rpm/stenographer
+mkdir -p ./suricata/rules
 mkdir -p /root/rpmbuild/BUILD
 mkdir -p /root/rpmbuild/BUILDROOT
 mkdir -p /root/rpmbuild/SPECS
@@ -24,21 +32,6 @@ yum -y install --downloadonly --downloaddir=./rpm/extras git epel-release wget r
 yum -y localinstall ./rpm/extras/*.rpm
 yum -y install --downloadonly --downloaddir=./rpm/extras rpm-build elfutils-libelf rpm rpm-libs rpm-python
 yum -y localinstall ./rpm/extras/*.rpm
-
-# Move into the CozyNSM install area
-git clone https://github.com/descendency/cozynsm.git
-cd cozynsm
-
-mkdir -p ./images
-mkdir -p ./tar/bro
-mkdir -p ./tar/stenographer
-mkdir -p ./rpm/docker
-mkdir -p ./rpm/ipa-client
-mkdir -p ./rpm/filebeat
-mkdir -p ./rpm/stenographer
-mkdir -p ./suricata/rules
-
-mv ../rpm/* rpm
 
 # Docker
 yum -y install --downloadonly --downloaddir=./rpm/docker yum-utils device-mapper-persistent-data lvm2
