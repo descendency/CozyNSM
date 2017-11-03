@@ -66,10 +66,26 @@ IPCOUNTER=0
 # CONFIGURATION SCRIPT --- EDIT BELOW AT YOUR OWN RISK                         #
 ################################################################################
 # Extracts all of the files to begin installation
-tar xzvf server.tar.gz
+#tar xzvf server.tar.gz
+
+# Ensure FreeIPA is the default DNS server.
+if grep -q DNS1 /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE; then
+   sed -e "s@DNS1=\\"?.*\\"?@DNS1=\"$IPA_IP\"@g" -i /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE
+else
+    echo -e "\nDNS1=\"$IPA_IP\"" >> /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE
+fi
+systemctl restart network
 
 # Locally installs required RPMs for every application.
-yum -y localinstall rpm/*/*.rpm
+yum -y localinstall rpm/updates/*.rpm
+yum -y localinstall rpm/extras/*.rpm
+yum -y localinstall rpm/docker/*.rpm
+yum -y localinstall rpm/ipa-client/*.rpm
+yum -y localinstall rpm/filebeat/*.rpm
+yum -y localinstall rpm/bro/*.rpm
+yum -y localinstall rpm/bro/*.rpm
+yum -y localinstall rpm/suricata/*.rpm
+yum -y localinstall rpm/stenographer/*.rpm
 
 # Points the server to its proper DNS server (FreeIPA).
 echo -e "\nnameserver $IPA_IP\n" >> /etc/resolv.conf
@@ -161,10 +177,10 @@ if $ENABLE_STENOGRAPHER; then
 
         if [ $COUNTER -eq $STENO_THREADS ]; then
             sed -e "s/THREADHOLDER/\t\{$LINE\}/g" \
-                -i /etc/stenographer/config
+                -i stenographer/config
         else
             sed -e "s/THREADHOLDER/\t\{$LINE\}\,\nTHREADHOLDER/g" \
-                -i /etc/stenographer/config
+                -i stenographer/config
         fi
         let COUNTER=COUNTER+1
     done
@@ -267,7 +283,7 @@ echo -e "--no-reverse" >> /var/lib/ipa-data/ipa-server-install-options
 docker run --name ipa --restart=always -ti -h ipa.$DOMAIN --privileged \
             -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
             --network="br0" \
-            --ip 172.18.0.2 \
+            --ip 172.18.0.253 \
             -v /var/lib/ipa-data:/data:Z \
             --tmpfs /run \
             --tmpfs /tmp \
@@ -307,6 +323,9 @@ if $ENABLE_ELK; then
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
 
+    pushd ./logstash
+    tar xzvf GeoLite2-City.tar.gz --strip-components=1
+    popd
     docker exec -iu logstash logstash mkdir /usr/share/logstash/GeoIP
     docker cp logstash/GeoLite2-City.mmdb \
         logstash:/usr/share/logstash/GeoIP/GeoLite2-City.mmdb
@@ -610,27 +629,30 @@ docker exec -itu root owncloud a2enmod ssl
 sed -e "s/DOMAINNAME/cloud.$DOMAIN/g" -i owncloud/000-default.conf
 docker exec -itu root owncloud chmod a+w /var/www/html
 docker cp owncloud/000-default.conf owncloud:/etc/apache2/sites-available/000-default.conf
+docker cp owncloud/user_ldap-0.9.1.tar.gz owncloud:/var/www/html/apps/user_ldap-0.9.1.tar.gz
+docker exec -itu www-data owncloud tar xzvf /var/www/html/apps/user_ldap-0.9.1.tar.gz -C /var/www/html/apps
+docker exec -itu root owncloud chown www-data:nogroup -R /var/www/html/apps/
 docker cp nginx/nginx.crt owncloud:/etc/ssl/certs/nginx.crt
 docker cp nginx/nginx.key owncloud:/etc/ssl/certs/nginx.key
 docker exec -itu www-data owncloud php occ maintenance:install --database="sqlite" --database-name="owncloud" --database-table-prefix="oc_" --admin-user "cozyadmin" --admin-pass "$IPA_ADMIN_PASSWORD"
 docker exec -itu www-data owncloud php occ app:enable user_ldap
 docker exec -itu www-data owncloud php occ ldap:create-empty-config
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapHost "$IPA_IP"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapPort "389"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapAgentName "uid=admin,cn=users,cn=accounts,dc=${DOMAIN//\./,dc=}"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapAgentPassword "$IPA_ADMIN_PASSWORD"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapBase "cn=users,cn=accounts,dc=${DOMAIN//\./,dc=}"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapBaseGroups "cn=groups,cn=accounts,dc=${DOMAIN//\./,dc=}"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapBaseGroups "cn=users,cn=accounts,dc=${DOMAIN//\./,dc=}"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapEmailAttribute "mail"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapExpertUsernameAttr "cn"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapGroupFilterObjectclass "ipausergroup"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapGroupMemberAssocAttr "member"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapUserDisplayName "cn"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapUserDisplayName2 "mail"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapUserFilterObjectclass "posixaccount"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapUserFilter "(|(objectclass=person))"
-docker exec -itu www-data owncloud php occ ldap:set-config '' ldapLoginFilter "(&(|(objectclass=person))(uid=%uid))"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapHost "$IPA_IP"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapPort "389"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapAgentName "uid=admin,cn=users,cn=accounts,dc=${DOMAIN//\./,dc=}"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapAgentPassword "$IPA_ADMIN_PASSWORD"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapBase "cn=users,cn=accounts,dc=${DOMAIN//\./,dc=}"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapBaseGroups "cn=groups,cn=accounts,dc=${DOMAIN//\./,dc=}"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapBaseGroups "cn=users,cn=accounts,dc=${DOMAIN//\./,dc=}"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapEmailAttribute "mail"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapExpertUsernameAttr "cn"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapGroupFilterObjectclass "ipausergroup"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapGroupMemberAssocAttr "member"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapUserDisplayName "cn"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapUserDisplayName2 "mail"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapUserFilterObjectclass "posixaccount"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapUserFilter "(|(objectclass=person))"
+docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapLoginFilter "(&(|(objectclass=person))(uid=%uid))"
 docker exec -itu www-data owncloud php occ config:system:set trusted_domains 2 --value=cloud.$DOMAIN
 docker restart owncloud
 

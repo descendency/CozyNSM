@@ -26,9 +26,11 @@ rm -rf /root/rpmbuild/SOURCES/*
 ################################################################################
 # Updates
 yum -y update --downloadonly --downloaddir=./rpm/updates
+# These break the network connection for some reason.
+rm -rf ./rpm/updates/NetworkManager*
 
 # Extras
-yum -y install --downloadonly --downloaddir=./rpm/extras git epel-release wget rngd
+yum -y install --downloadonly --downloaddir=./rpm/extras git epel-release wget rng-tools
 yum -y localinstall ./rpm/extras/*.rpm
 yum -y install --downloadonly --downloaddir=./rpm/extras rpm-build elfutils-libelf rpm rpm-libs rpm-python
 yum -y localinstall ./rpm/extras/*.rpm
@@ -55,7 +57,7 @@ yum -y localinstall ./rpm/bro/*.rpm
 curl -L -o ./tar/bro/bro-$BRO_VERSION.tar.gz -O https://www.bro.org/downloads/bro-$BRO_VERSION.tar.gz
 mv ./tar/bro/bro-$BRO_VERSION.tar.gz  /root/rpmbuild/SOURCES/
 git clone https://github.com/dcode/rpmbuild.git
-sed -i -e "s@--strip-components=1@@g" ./rpmbuild/SPECS/bro.spec
+sed -i -e "s@--strip-components=1@@g" -e "s@%{_libdir}/broctl/*\.p*@@" -e "s@%files -n broctl@%files -n broctl"$'\\\n'"%exclude %{_libdir}/broctl/broccoli*.p*"$'\\\n'"%exclude %{_libdir}/broctl/_broccoli_intern.so@g" ./rpmbuild/SPECS/bro.spec
 mv ./rpmbuild/SPECS/bro.spec /root/rpmbuild/SPECS/bro.spec
 git clone https://github.com/J-Gras/bro-af_packet-plugin
 pushd ./bro-af_packet-plugin
@@ -81,7 +83,6 @@ pushd /etc/yum.repos.d
 curl -O https://copr.fedorainfracloud.org/coprs/jasonish/suricata-stable/repo/epel-7/jasonish-suricata-stable-epel-7.repo
 popd
 yum -y install --downloadonly --downloaddir=./rpm/suricata suricata
-yum -y localinstall ./rpm/suricata/*.rpm
 
 # Stenographer
 rm -rf /root/rpmbuild/BUILD/*
@@ -203,5 +204,4 @@ rm -rf rpmbuild
 rm -rf *.tar.gz
 rm -rf metron-bro-plugin-kafka
 rm -rf tar
-rm -rf /tmp/rpm
 rm -rf /tmp/*.yumtx
