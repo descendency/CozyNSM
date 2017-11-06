@@ -36,7 +36,6 @@ ES_DATA_NODES=2
 # For disabling the stenographer install - because it takes up a lot of
 # resources unnecessarily, for testing.
 ENABLE_STENOGRAPHER=true
-ENABLE_MOLOCH=false
 ENABLE_ELK=true
 ENABLE_SPLUNK=true
 ENABLE_TOOLS=true
@@ -59,7 +58,8 @@ OWNCLOUD_IP=$IP.9
 GOGS_IP=$IP.10
 CHAT_IP=$IP.11
 SPLUNK_IP=$IP.12
-ESDATA_IP=$IP.13
+HIVE_IP=$IP.13
+ESDATA_IP=$IP.14
 
 IPCOUNTER=0
 ################################################################################
@@ -77,6 +77,8 @@ fi
 systemctl restart network
 
 # Locally installs required RPMs for every application.
+mkdir /tmp/backup
+mv /etc/yum.repos.d/* /tmp/backup
 yum -y localinstall rpm/updates/*.rpm
 yum -y localinstall rpm/extras/*.rpm
 yum -y localinstall rpm/docker/*.rpm
@@ -86,7 +88,7 @@ yum -y localinstall rpm/bro/*.rpm
 yum -y localinstall rpm/bro/*.rpm
 yum -y localinstall rpm/suricata/*.rpm
 yum -y localinstall rpm/stenographer/*.rpm
-
+mv /tmp/backup/* /etc/yum.repos.d
 # Points the server to its proper DNS server (FreeIPA).
 echo -e "\nnameserver $IPA_IP\n" >> /etc/resolv.conf
 
@@ -212,6 +214,7 @@ fi
 
 # Automates the sysctl commands below, on boot
 echo "net.ipv4.conf.all.forwarding=1" >> /usr/lib/sysctl.d/00-system.conf
+#echo "net.ipv6.conf.all.disable_ipv6=1" >> /usr/lib/sysctl.d/00-system.conf
 echo "vm.max_map_count=1073741824" >> /usr/lib/sysctl.d/00-system.conf
 
 # Improve Query time in Splunk and ElasticSearch.
@@ -222,8 +225,12 @@ chkconfig --add disable-transparent-hugepages
 # Routes packets internally for docker
 sysctl -w net.ipv4.conf.all.forwarding=1
 
+systctl -w net.ipv6.conf.all.enable_ipv6=1
+#systctl -w net.ipv6.conf.lo.enable_ipv6=1
+
 # Fixes an ElasticSearch issue in 5.x+
 sysctl -w vm.max_map_count=1073741824
+systemctl restart network
 
 # Generate SSL certs
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/nginx.key -out nginx/nginx.crt -subj "/C=US/ST=/L=/O=CozyStack/OU=CozyStack/CN=$DOMAIN"
@@ -238,7 +245,8 @@ systemctl start docker
 systemctl enable rngd
 systemctl start rngd
 
-docker network create --driver=bridge --subnet=172.18.0.0/24 br0
+docker network create --driver=bridge --subnet=172.18.0.0/24 --gateway=172.18.0.1 --ipv6 --subnet=2001:3200:3200::/64 --gateway=2001:3200:3200::1 br0
+docker network create --driver=bridge --subnet=172.19.0.0/24 br1
 ################################################################################
 # LOAD: Docker Images                                                          #
 ################################################################################
@@ -284,6 +292,7 @@ docker run --name ipa --restart=always -ti -h ipa.$DOMAIN --privileged \
             -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
             --network="br0" \
             --ip 172.18.0.253 \
+            --ip6="2001:3200:3200::2" \
             -v /var/lib/ipa-data:/data:Z \
             --tmpfs /run \
             --tmpfs /tmp \
@@ -533,7 +542,7 @@ if $ENABLE_TOOLS; then
     docker run --name chat --restart=always -tid -h chat.$DOMAIN \
                 --ip 172.18.0.$(echo $CHAT_IP | awk -F . '{print $4}') \
                 --network="br0" \
-    			-e OVERWRITE_SETTING_LDAP_Enable="True" \
+    			-e OVERWRITE_SETTING_LDAP_Authentication="True" \
     			-e OVERWRITE_SETTING_LDAP_Login_Fallback="True" \
     			-e OVERWRITE_SETTING_LDAP_Host="$IPA_IP" \
     			-e OVERWRITE_SETTING_LDAP_Port="389" \

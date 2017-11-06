@@ -154,11 +154,6 @@ docker save -o ./images/rocketchat.docker rocketchat
 docker pull nginx
 docker save -o ./images/nginx.docker nginx
 
-# OwnCloud - Old Version
-docker pull owncloud:9.1.6
-docker tag owncloud:9.1.6 owncloudbackup
-docker save -o ./images/owncloudbackup.docker owncloudbackup
-
 # OwnCloud
 docker pull owncloud:latest
 docker tag owncloud:latest owncloud

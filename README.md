@@ -1,8 +1,7 @@
 ### Introduction
 CozyNSM was designed and created to be a lightweight Security Onion          
 replacement to be deployed in an SELinux Environment. This was tested with   
-CentOS 7.2 Minimal, in an offline environment. It is intended to be used     
-with the provided rpms and configuration files.                              
+CentOS 7.2 Minimal, in an offline environment.                           
 
 This version of the CozyStack was designed for one server.                   
 Minimum Recommended Specs (1 gbps):                                          
@@ -13,11 +12,13 @@ Minimum Recommended Specs (1 gbps):
 Multiply the above by the number of gbps you want to collect. It should give
 an approximate value for what you will NEED.                                 
 
+First, run ```preinstall.sh``` to grab all of the necessary files and then run
+```install.sh``` to install everything. This process can be run across two
+machines. This will help with air gapped environments.  
 
 ### README BELOW
 CozyNSM 'requires' the following:
   - INSTALL.md (read this)
-  - server.tar.gz (install binaries and stuff)
   - CentOS 7.2 (Build 1511) Minimal [Feel free to test other environments
     at your own leisure]
 
@@ -35,9 +36,6 @@ Team 90 and Team 93. Members of both teams have contributed greatly to the
 structure, testing, and motivation to work on this project. Thanks for       
 breaking and demanding as much as you did, because now it is significantly   
 better than before.                                                          
-
-
-[Source files needed for build](https://www.dropbox.com/s/ptl9sm9ze7nnmxd/server.tar.gz?dl=0)
 
 
 [Install Guide](https://github.com/descendency/CozyNSM/blob/master/INSTALL.md)
