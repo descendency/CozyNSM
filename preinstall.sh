@@ -24,23 +24,28 @@ rm -rf /root/rpmbuild/SOURCES/*
 ################################################################################
 # RPMs
 ################################################################################
+sed -e "s/repo_gpgcheck=1/repo_gpgcheck=0/g" -e "s/localpkg_gpgcheck=1/localpkg_gpgcheck=0/g" -i /etc/yum.conf
+yum clean all
 # Updates
 yum -y update --downloadonly --downloaddir=./rpm/updates
 # These break the network connection for some reason.
-rm -rf ./rpm/updates/NetworkManager*
+#rm -rf ./rpm/updates/NetworkManager*
 
 # Extras
-yum -y install --downloadonly --downloaddir=./rpm/extras git epel-release wget rng-tools
-yum -y localinstall ./rpm/extras/*.rpm
+yum -y install --downloadonly --downloaddir=./rpm/extras git wget rng-tools
+yum -y install git wget rng-tools
+curl -L -o ./rpm/extras/epel-release-7-11.noarch.rpm -O http://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/e/epel-release-7-11.noarch.rpm
+rpm --import http://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
+yum -y install ./rpm/extras/epel-release-7-11.noarch.rpm
 yum -y install --downloadonly --downloaddir=./rpm/extras rpm-build elfutils-libelf rpm rpm-libs rpm-python
-yum -y localinstall ./rpm/extras/*.rpm
+yum -y install rpm-build elfutils-libelf rpm rpm-libs rpm-python
 
 # Docker
 yum -y install --downloadonly --downloaddir=./rpm/docker yum-utils device-mapper-persistent-data lvm2
-yum -y localinstall ./rpm/docker/*.rpm
+yum -y install yum-utils device-mapper-persistent-data lvm2
 yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 yum -y install --downloadonly --downloaddir=./rpm/docker docker-ce
-yum -y localinstall ./rpm/docker/*.rpm
+yum -y install docker-ce
 # Start Docker Service
 systemctl start docker
 
@@ -53,11 +58,12 @@ yum -y install --downloadonly --downloaddir=./rpm/filebeat ./rpm/filebeat/filebe
 
 # Bro
 yum -y install --downloadonly --downloaddir=./rpm/bro bind-devel bison cmake flex GeoIP-devel gcc-c++ gperftools-devel jemalloc-devel libpcap-devel openssl-devel python2-devel python-tools swig zlib-devel python-devel kernel-devel kernel-headers librdkafka-devel
-yum -y localinstall ./rpm/bro/*.rpm
+yum -y install bind-devel bison cmake flex GeoIP-devel gcc-c++ gperftools-devel jemalloc-devel libpcap-devel openssl-devel python2-devel python-tools swig zlib-devel python-devel kernel-devel kernel-headers librdkafka-devel
 curl -L -o ./tar/bro/bro-$BRO_VERSION.tar.gz -O https://www.bro.org/downloads/bro-$BRO_VERSION.tar.gz
 mv ./tar/bro/bro-$BRO_VERSION.tar.gz  /root/rpmbuild/SOURCES/
 git clone https://github.com/dcode/rpmbuild.git
-sed -i -e "s@--strip-components=1@@g" -e "s@%{_libdir}/broctl/*\.p*@@" -e "s@%files -n broctl@%files -n broctl"$'\\\n'"%exclude %{_libdir}/broctl/broccoli*.p*"$'\\\n'"%exclude %{_libdir}/broctl/_broccoli_intern.so@g" ./rpmbuild/SPECS/bro.spec
+sed -i -e "s@--strip-components=1@@g" -e "s@%{_libdir}/broctl/*\.p*@@" -e "s@%files -n broctl@%files -n broctl"$'\\\n'"%exclude %{_libdir}/broctl/broccoli*.p*"$'\\\n'"%exclude %{_libdir}/broctl/_broccoli_intern.so@g" -e "s/APACHE_KAFKA/BRO_KAFKA/g" ./rpmbuild/SPECS/bro.spec
+sed -i -e '/%dir %{_libdir}\/bro\/plugins\/BRO_KAFKA\/scripts\/Apache/d' -e '/%dir %{_libdir}\/bro\/plugins\/BRO_KAFKA\/scripts\/Apache\/Kafka/d' -e '/%{_libdir}\/bro\/plugins\/BRO_KAFKA\/scripts\/Apache\/Kafka\/\*.bro/d' ./rpmbuild/SPECS/bro.spec
 mv ./rpmbuild/SPECS/bro.spec /root/rpmbuild/SPECS/bro.spec
 git clone https://github.com/J-Gras/bro-af_packet-plugin
 pushd ./bro-af_packet-plugin
@@ -89,7 +95,7 @@ rm -rf /root/rpmbuild/BUILD/*
 rm -rf /root/rpmbuild/BUILDROOT/*
 rm -rf /root/rpmbuild/SOURCES/*
 yum -y install --downloadonly --downloaddir=./rpm/stenographer libaio-devel leveldb-devel snappy-devel gcc-c++ make libpcap-devel libseccomp-devel git golang libaio leveldb snappy libpcap libseccomp tcpdump curl rpmlib jq systemd
-yum -y localinstall ./rpm/stenographer/*.rpm
+yum -y install libaio-devel leveldb-devel snappy-devel gcc-c++ make libpcap-devel libseccomp-devel git golang libaio leveldb snappy libpcap libseccomp tcpdump curl rpmlib jq systemd
 curl -L -o ./tar/stenographer/844b5a4e538b4a560550b227c28ac911833713dd.tar.gz https://github.com/google/stenographer/archive/844b5a4e538b4a560550b227c28ac911833713dd.tar.gz
 mv ./tar/stenographer/844b5a4e538b4a560550b227c28ac911833713dd.tar.gz /root/rpmbuild/SOURCES/stenographer-844b5a4e538b4a560550b227c28ac911833713dd.tar.gz
 mv ./rpmbuild/SPECS/stenographer.spec /root/rpmbuild/SPECS/stenographer.spec
@@ -167,7 +173,7 @@ docker save -o ./images/thehive.docker thehive
 # Cortex for TheHive
 docker pull certbdf/cortex
 docker tag certbdf/cortex cortex
-docker save -o ./images/cortex cortex
+docker save -o ./images/cortex.docker cortex
 
 # DokuWiki
 docker pull mprasil/dokuwiki
@@ -193,7 +199,7 @@ curl -L -o ./logstash/GeoLite2-City.tar.gz http://geolite.maxmind.com/download/g
 ################################################################################
 # Cleanup
 ################################################################################
-
+sed -e "s/repo_gpgcheck=0/repo_gpgcheck=1/g" -i /etc/yum.conf
 rm -rf bro-af_packet-plugin
 rm -rf rpmbuild
 rm -rf *.tar.gz

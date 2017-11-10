@@ -65,8 +65,15 @@ IPCOUNTER=0
 ################################################################################
 # CONFIGURATION SCRIPT --- EDIT BELOW AT YOUR OWN RISK                         #
 ################################################################################
+# Firewalld is currently broken with docker. Until the issue is fixed, it must
+# be turned off. 
+systemctl disable firewalld
+systemctl stop firewalld
+
 # Extracts all of the files to begin installation
 #tar xzvf server.tar.gz
+sed -e "s/repo_gpgcheck=1/repo_gpgcheck=0/g" -e "s/localpkg_gpgcheck=1/localpkg_gpgcheck=0/g" -i /etc/yum.conf
+yum clean all
 
 # Ensure FreeIPA is the default DNS server.
 if grep -q DNS1 /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE; then
@@ -192,6 +199,7 @@ if $ENABLE_STENOGRAPHER; then
     chmod 755 /etc/stenographer
     chown stenographer:stenographer /etc/stenographer/certs
     chmod 750 /etc/stenographer/certs
+    /usr/bin/stenokeys.sh stenographer stenographer
     systemctl enable stenographer
     systemctl start stenographer
 fi
@@ -225,8 +233,8 @@ chkconfig --add disable-transparent-hugepages
 # Routes packets internally for docker
 sysctl -w net.ipv4.conf.all.forwarding=1
 
-systctl -w net.ipv6.conf.all.enable_ipv6=1
-#systctl -w net.ipv6.conf.lo.enable_ipv6=1
+sysctl -w net.ipv6.conf.all.enable_ipv6=1
+#sysctl -w net.ipv6.conf.lo.enable_ipv6=1
 
 # Fixes an ElasticSearch issue in 5.x+
 sysctl -w vm.max_map_count=1073741824
@@ -292,7 +300,7 @@ docker run --name ipa --restart=always -ti -h ipa.$DOMAIN --privileged \
             -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
             --network="br0" \
             --ip 172.18.0.253 \
-            --ip6="2001:3200:3200::2" \
+            --ip6="2001:3200:3200::1337" \
             -v /var/lib/ipa-data:/data:Z \
             --tmpfs /run \
             --tmpfs /tmp \
@@ -745,8 +753,8 @@ if $ENABLE_SPLUNK; then
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN splunk --a-rec=$SPLUNK_IP
 fi
 
-docker exec -iu root ipa ipa dnsrecord-del $DOMAIN ipa --a-rec 172.18.0.2
-docker exec -iu root ipa ipa dnsrecord-del $DOMAIN ipa-ca --a-rec 172.18.0.2
+docker exec -iu root ipa ipa dnsrecord-del $DOMAIN ipa --a-rec 172.18.0.253
+docker exec -iu root ipa ipa dnsrecord-del $DOMAIN ipa-ca --a-rec 172.18.0.253
 
 ################################################################################
 # CONFIGURE: First User/Admin                                                  #
@@ -791,3 +799,12 @@ ipa-client-install -U --server=ipa.$DOMAIN \
 # Remove root access
 sed -e 's/^#PermitRootLogin yes$/PermitRootLogin no/g' -i /etc/ssh/sshd_config
 sed -e 's@^\(root.*\)/bin/bash$@\1/sbin/nologin@g' -i /etc/passwd
+
+# Configure Firewall
+#firewall-cmd --zone=public --add-port={22/tcp,80/tcp,53/udp,53/tcp,443/tcp,389/tcp,636/tcp,88/tcp,464/tcp,88/udp,464/udp,123/udp,7389/tcp,9443/tcp,9444/tcp,9445/tcp,5044/tcp,9600/tcp,9200/tcp,9300/tcp,1022/tcp,27017/tcp,9997/tcp,8088/tcp,1514/tcp} --permanent
+#firewall-cmd --permanent --zone=trusted --change-interface=docker0
+#firewall-cmd --zone=public --permanent --add-masquerade
+#firewall-cmd --reload
+
+sed -e "s/repo_gpgcheck=0/repo_gpgcheck=1/g" -e "s/localpkg_gpgcheck=0/localpkg_gpgcheck=1/g" -i /etc/yum.conf
+yum clean all

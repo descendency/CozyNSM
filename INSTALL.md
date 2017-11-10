@@ -1,10 +1,18 @@
 # CozyNSM Install
 This installation takes me around 2 hours. 1 hour to install CentOS and 1 hour
 to run the install script and configure the services. This is being done in a
-Virtual Machine on an early 2017 Touch Bar Macbook Pro 15" (16 GB RAM).
+Virtual Machine on an ESXi server.
 
 Setting up RAID Arrays, Switches, Routers, etc are not part of this and should
 be done prior to installation.
+
+### Pre-Install
+From another machine (I recommend creating a virtual machine), you must run
+```preinstall.sh```. This will download all of the required files for the
+installation. Once this has completed, move those files onto the server.
+
+(In the future, this may be a multi-server build for those that need this
+capability. The same process will apply.)
 
 ### Server Install
 Download the latest scripts and install files onto a laptop. If you want to
@@ -81,19 +89,15 @@ your password is weak.
 Once CentOS has finished installing, log in as root.
 
 1. Run the following commands:
-    * From the server: Clear the temp directory ("rm -rf /tmp/\*") and
-    then copy the files onto the server.
-    * From the laptop: Copy files (scp -r \* root@172.16.124.3:/tmp) for
-    Cozy to the server.
-    * Back to the server.
+    * *From the laptop*: Copy files for Cozy to the server.
     * Enable the install script to run ("chmod +x install.sh").
-1. The script currently does not prompt the user. You will need to change
-the following values:
+1. The script currently does not prompt the user. You may need to change
+the following values (in install.sh):
     * BRO_WORKERS=4 [Bro workers should be assigned based on the number of gbps
     you are going to need to collect. Generally, 4 workers per 1 gbps. Each
     worker requires 1 CPU core, therefore don't set this to 400 expecting to
     collect 100gbps for free. (Hardware matters). By default, I would suggest 4
-    workers.]
+    workers for a 1Gbps network.]
     * ES_RAM=30g [The Elasticsearch Heap Size should be between 2g and 31g.
     Do not put more than this. It will cause massive performance degredation due
     to how the JVM (java virtual machine) allocates memory.]
