@@ -186,8 +186,8 @@ docker tag tvelocity/etherpad-lite etherpad
 docker save -o ./images/etherpad.docker etherpad
 
 # FSF
-docker pull jeffgeiger/centos-fsf
-docker tag jeffgeiger/centos-fsf fsf
+docker pull wzod/fsf
+docker tag wzod/fsf fsf
 docker save -o ./images/fsf.docker fsf
 
 ################################################################################

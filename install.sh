@@ -59,14 +59,15 @@ GOGS_IP=$IP.10
 CHAT_IP=$IP.11
 SPLUNK_IP=$IP.12
 HIVE_IP=$IP.13
-ESDATA_IP=$IP.14
+CORTEX_IP=$IP.14
+ESDATA_IP=$IP.15
 
 IPCOUNTER=0
 ################################################################################
 # CONFIGURATION SCRIPT --- EDIT BELOW AT YOUR OWN RISK                         #
 ################################################################################
 # Firewalld is currently broken with docker. Until the issue is fixed, it must
-# be turned off. 
+# be turned off.
 systemctl disable firewalld
 systemctl stop firewalld
 
@@ -271,6 +272,9 @@ if $ENABLE_TOOLS; then
     docker load -i ./images/owncloud.docker
     docker load -i ./images/mongo.docker
     docker load -i ./images/rocketchat.docker
+    docker load -i ./images/thehive.docker
+    docker load -i ./images/cortex.docker
+    docker load -i ./images/fsf.docker
 fi
 
 if $ENABLE_SPLUNK; then
@@ -537,7 +541,6 @@ if $ENABLE_TOOLS; then
     bash interface.sh $ANALYST_INTERFACE $CHAT_IP $IPCOUNTER
     let IPCOUNTER=IPCOUNTER+1
     docker run --name mongodb --restart=always -tid -h mongodb.$DOMAIN \
-                -p $CHAT_IP:27017:27017 \
                 --ip 172.18.0.4 \
                 --network="br0" \
                 mongo
@@ -570,7 +573,7 @@ if $ENABLE_TOOLS; then
     			-e OVERWRITE_SETTING_LDAP_Merge_Existing_Users="True" \
     			-e OVERWRITE_SETTING_LDAP_Import_Users="True" \
     			-e ROOT_URL=http://$CHAT_IP \
-    			-e MONGO_URL=mongodb://$CHAT_IP/mydb \
+    			-e MONGO_URL=mongodb://172.18.0.4/mydb \
     			-e ADMIN_USERNAME=cozyadmin \
     			-e ADMIN_PASS=$IPA_ADMIN_PASSWORD \
     			-e ADMIN_EMAIL=cozyadmin@cozy.lan \
@@ -627,12 +630,54 @@ if $ENABLE_SPLUNK; then
     sysctl vm.drop_caches=3
 
 fi
+################################################################################
+# INSTALL: ElasticSearch for TheHive                                           #
+################################################################################
+docker run --restart=always -itd --name eshive -h eshive.$DOMAIN \
+    --network="br1" \
+    --ip 172.19.0.11 \
+    -e "xpack.security.enabled=false" \
+    -e "cluster.name=hive" \
+    -e "script.inline=true" \
+    -e "thread_pool.index.queue_size=100000" \
+    -e "thread_pool.search.queue_size=100000" \
+    -e "thread_pool.bulk.queue_size=100000" \
+    elasticsearch
+
+    # Fixes a memory assignemnt issue I still don't completely understand.
+    sysctl vm.drop_caches=3
+
+################################################################################
+# INSTALL: TheHive                                                             #
+################################################################################
+bash interface.sh $ANALYST_INTERFACE $HIVE_IP $IPCOUNTER
+let IPCOUNTER=IPCOUNTER+1
+docker run --restart=always -itd --name thehive -h hive.$DOMAIN \
+    --network="br1" \
+    --ip 172.19.0.10 \
+    thehive --es-hostname 172.19.0.11 --cortex-hostname 172.19.0.12
+
+    # Fixes a memory assignemnt issue I still don't completely understand.
+    sysctl vm.drop_caches=3
+
+################################################################################
+# INSTALL: Cortex                                                              #
+################################################################################
+bash interface.sh $ANALYST_INTERFACE $CORTEX_IP $IPCOUNTER
+let IPCOUNTER=IPCOUNTER+1
+docker run --restart=always -itd --name cortex -h cortex.$DOMAIN \
+    --network="br1" \
+    --ip 172.19.0.12 \
+    cortex
+
+    # Fixes a memory assignemnt issue I still don't completely understand.
+    sysctl vm.drop_caches=3
 
 ################################################################################
 # Auto Configure SSO                                                           #
 ################################################################################
 
-#gogs
+# GoGS
 sed -e "s/GOGSDOMAIN/gogs.$DOMAIN/g" -i gogs/app.ini
 docker cp gogs/app.ini gogs:/data/gogs/conf/app.ini
 sqlite3 gogs/gogs.db "$(sed -e "s/IPA_IP/$IPA_IP/g" -e "s/DOMAIN/dc=${DOMAIN//\./,dc=}/g" -e "s/ADMIN_PASSWORD/$IPA_ADMIN_PASSWORD/g" gogs/test.txt)"
@@ -673,14 +718,11 @@ docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapLoginFilter "
 docker exec -itu www-data owncloud php occ config:system:set trusted_domains 2 --value=cloud.$DOMAIN
 docker restart owncloud
 
-################################################################################
-# INSTALL: Splunk Forwarders                                                   #
-################################################################################
-#
-################################################################################
-# INSTALL: TheHive With Cortex                                                 #
-################################################################################
-#
+# TheHive
+sed -i -e "s/IPAADMINUSER/$IPA_USERNAME/g" -e "s/IPAIP/$IPA_IP/g" -e "s/IPA_ADMIN_PASSWORD/$IPA_ADMIN_PASSWORD/g" -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" thehive/application.conf
+docker cp thehive/application.conf thehive:/etc/thehive/application.conf
+docker restart thehive
+
 ################################################################################
 # INSTALL: DokuWiki                                                            #
 ################################################################################
@@ -701,10 +743,24 @@ docker run --restart=always -itd --name proxy -h proxy.$DOMAIN \
             -p $GOGS_IP:80:80 \
             nginx
 
+docker run --restart=always -itd --name proxy2 -h proxy2.$DOMAIN \
+            --ip 172.19.0.51 \
+            --network="br1" \
+            -p $HIVE_IP:80:80 \
+            -p $HIVE_IP:443:443 \
+            -p $CORTEX_IP:80:80 \
+            -p $CORTEX_IP:443:443 \
+            nginx
+
 # Copy SSL Certs into directories
 docker exec -itu root proxy mkdir /etc/nginx/ssl
 docker cp nginx/nginx.key proxy:/etc/nginx/ssl/nginx.key
 docker cp nginx/nginx.crt proxy:/etc/nginx/ssl/nginx.crt
+
+docker exec -itu root proxy2 mkdir /etc/nginx/ssl
+docker cp nginx/nginx.key proxy2:/etc/nginx/ssl/nginx.key
+docker cp nginx/nginx.crt proxy2:/etc/nginx/ssl/nginx.crt
+
 ### Modify the configuration
 sed -e "s/DOMAIN/$DOMAIN/g" \
     -e "s/GOGSIP/172.18.0.$(echo $GOGS_IP | awk -F . '{print $4}')/g" \
@@ -713,11 +769,15 @@ sed -e "s/DOMAIN/$DOMAIN/g" \
     -e "s/KIBANAIP/172.18.0.$(echo $KIBANA_IP | awk -F . '{print $4}')/g" \
     -e "s/GOGSIP/172.18.0.$(echo $GOGS_IP | awk -F . '{print $4}')/g" \
     -e "s/SPLUNKIP/172.18.0.$(echo $SPLUNK_IP | awk -F . '{print $4}')/g" \
+    -e "s/HIVEIP/172.19.0.10/g" \
+    -e "s/CORTEXIP/172.19.0.12/g" \
     -i nginx/nginx.conf
 docker cp nginx/nginx.conf proxy:/etc/nginx/nginx.conf
+docker cp nginx/nginx.conf proxy2:/etc/nginx/nginx.conf
 
 # Start Reverse Proxy
 docker restart proxy
+docker restart proxy2
 
 ################################################################################
 # INSTALL: File Scanning Framework                                             #
@@ -747,6 +807,8 @@ if $ENABLE_TOOLS; then
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN cloud --a-rec=$OWNCLOUD_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN gogs --a-rec=$GOGS_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN chat --a-rec=$CHAT_IP
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN cortex --a-rec=$CORTEX_IP
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN hive --a-rec=$HIVE_IP
 fi
 
 if $ENABLE_SPLUNK; then
@@ -786,6 +848,14 @@ mv /home/skel /home/$IPA_USERNAME
 # Automate the Kibana Index Choosing
 curl -k -u $IPA_USERNAME:$IPA_ADMIN_PASSWORD -XPUT https://es.$DOMAIN:9200/.kibana/index-pattern/logstash-* -d '{"title" : "logstash-*",  "timeFieldName": "ts"}'
 curl -k -u $IPA_USERNAME:$IPA_ADMIN_PASSWORD -XPUT https://es.$DOMAIN:9200/.kibana/config/4.1.1 -d '{"defaultIndex" : "logstash-*"}'
+
+# Create first TheHive user (give it time to reboot)
+curl -XPOST -H 'Content-Type: application/json' -k https://hive.$DOMAIN/api/user -d '{
+  "login": "$IPA_USERNAME",
+  "name": "Cozy Admin",
+  "roles": ["read", "write", "admin"],
+  "password": "$IPA_ADMIN_PASSWORD"
+}'
 
 # Configure IPA client
 ipa-client-install -U --server=ipa.$DOMAIN \
