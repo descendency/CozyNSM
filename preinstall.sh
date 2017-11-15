@@ -146,7 +146,7 @@ docker save -o ./images/busybox.docker busybox
 docker pull adelton/freeipa-server:centos-7
 docker tag adelton/freeipa-server:centos-7 freeipa
 docker save -o ./images/freeipa.docker freeipa
-
+#
 # MongoDB for RocketChat
 docker pull mongo
 docker save -o ./images/mongo.docker mongo
@@ -189,6 +189,11 @@ docker save -o ./images/etherpad.docker etherpad
 docker pull wzod/fsf
 docker tag wzod/fsf fsf
 docker save -o ./images/fsf.docker fsf
+
+# Kafka
+docker pull wurstmeister/kafka
+docker tag wurstmeister/kafka kafka
+docker save -o ./images/kafka.docker kafka
 
 ################################################################################
 # Big Files
