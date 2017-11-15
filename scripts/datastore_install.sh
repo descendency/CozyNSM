@@ -83,7 +83,7 @@ if $ENABLE_ELK; then
                 --network="databridge" \
                 --ip 172.18.0.$(echo $ES_IP | awk -F . '{print $4}') \
                 -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                -e ELASTIC_PASSWORD=$IPA_ADMIN_PASSWORD \
+                -e ELASTIC_PASSWORD="changeme" \
                 elasticsearch
 
     docker cp elasticsearch/instances.yml es:/usr/share/elasticsearch/config/x-pack/instances.yml
@@ -126,7 +126,7 @@ if $ENABLE_ELK; then
                 --network="databridge" \
                 --ip 172.18.0.$(echo $ESSEARCH_IP | awk -F . '{print $4}') \
                 -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                -e ELASTIC_PASSWORD=$IPA_ADMIN_PASSWORD \
+                -e ELASTIC_PASSWORD="changeme" \
                 elasticsearch
 
     # Fixes a memory assignemnt issue I still don't completely understand.
@@ -165,7 +165,7 @@ if $ENABLE_ELK; then
                     --network="databridge" \
                     --ip 172.18.0.$(echo $TMP_IP | awk -F . '{print $4}') \
                     -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                    -e ELASTIC_PASSWORD=$IPA_ADMIN_PASSWORD \
+                    -e ELASTIC_PASSWORD="changeme" \
                     elasticsearch
 
         # Fixes a memory assignemnt issue I still don't completely understand.
