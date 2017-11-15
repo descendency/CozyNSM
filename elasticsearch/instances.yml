@@ -4,4 +4,3 @@ instances:
   - name: "kibana"
   - name: "Logstash"
   - name: "FileBeat"
-CENSOR
