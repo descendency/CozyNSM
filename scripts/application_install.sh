@@ -323,6 +323,7 @@ docker restart appproxy
 # Sign in as IPA admin
 echo $IPA_ADMIN_PASSWORD | docker exec -iu root ipa kinit admin
 
+
 # Create DNS A-Records
 docker exec -iu root ipa ipa dnsrecord-add $DOMAIN ipa --a-rec=$IPA_IP
 docker exec -iu root ipa ipa dnsrecord-add $DOMAIN ipa-ca --a-rec=$IPA_IP
@@ -331,7 +332,8 @@ if $ENABLE_ELK; then
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN elasticsearch --a-rec=172.18.0.$(echo $ES_IP | awk -F . '{print $4}')
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN es --a-rec=172.18.0.$(echo $ES_IP | awk -F . '{print $4}')
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN essearch --a-rec=172.18.0.$(echo $ESSEARCH_IP | awk -F . '{print $4}')
-    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN logstash --a-rec=$ES_IP
+
+docker exec -iu root ipa ipa dnsrecord-add $DOMAIN logstash --a-rec=$ES_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN kibana --a-rec=$KIBANA_IP
 fi
 
@@ -353,7 +355,8 @@ if $ENABLE_HIVE; then
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN hive --a-rec=$HIVE_IP
 fi
 
-if $ENABLE_SPLUNK; then
+if $ENABLE_SPLUNK; then 
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN kafka --a-rec=$KAFKA_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN splunk --a-rec=$SPLUNK_IP
 fi
 
