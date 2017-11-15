@@ -21,6 +21,7 @@ filebeat.prospectors:
   paths:
     - /var/log/suricata/eve.json
   tags: ["suricata"]
+  document_type: suricata_raw
     #- /var/log/*.log
     #- c:\programdata\elasticsearch\logs\*
 
@@ -29,6 +30,7 @@ filebeat.prospectors:
     - /data/bro/current/*.log
   exclude_files: ["communication.log", "loaded_scripts.log", "stdout.log", "stderr.log", "packet_filter.log", "notice.log", "reporter.log"]
   tags: ["bro"]
+  document_type: bro_raw
   # Exclude lines. A list of regular expressions to match. It drops the lines that are
   # matching any regular expression from the list.
   #exclude_lines: ["^DBG"]
@@ -118,7 +120,7 @@ output.kafka:
   hosts: ["kafka:9092"]
 
   # message topic selection + partitioning
-  topic: 'cozy_raw'
+  topic: '%{[type]}'
   partition.round_robin:
     reachable_only: false
 
