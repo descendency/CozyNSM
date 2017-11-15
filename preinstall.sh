@@ -114,8 +114,8 @@ docker tag gogs/gogs gogs
 docker save -o ./images/gogs.docker gogs
 
 # ElasticSearch
-docker pull docker.elastic.co/elasticsearch/elasticsearch:$ELASTIC_VERSION
-docker tag docker.elastic.co/elasticsearch/elasticsearch:$ELASTIC_VERSION elasticsearch
+docker pull docker.elastic.co/elasticsearch/elasticsearch-platinum:$ELASTIC_VERSION
+docker tag docker.elastic.co/elasticsearch/elasticsearch-platinum:$ELASTIC_VERSION elasticsearch
 docker save -o ./images/elasticsearch.docker elasticsearch
 
 # Logstash
@@ -166,8 +166,8 @@ docker tag owncloud:latest owncloud
 docker save -o ./images/owncloud.docker owncloud
 
 # TheHive
-docker pull certbdf/thehive
-docker tag certbdf/thehive thehive
+docker pull certbdf/thehive:2.13.2-1
+docker tag certbdf/thehive:2.13.2-1 thehive
 docker save -o ./images/thehive.docker thehive
 
 # Cortex for TheHive
@@ -195,6 +195,18 @@ docker save -o ./images/fsf.docker fsf
 ################################################################################
 curl -L -o ./suricata/rules/emerging-all.rules https://rules.emergingthreats.net/open/snort-2.9.0/emerging-all.rules
 curl -L -o ./logstash/GeoLite2-City.tar.gz http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz
+
+################################################################################
+# Elastic Certificates
+################################################################################
+sysctl -w vm.max_map_count=1073741824
+docker run --restart=always -itd --name es -e ELASTIC_PASSWORD=changeme elasticsearch
+docker cp elasticsearch/instances.yml es:/usr/share/elasticsearch/instances.yml
+echo certs.zip | docker exec -iu root es /usr/share/elasticsearch/bin/x-pack/certgen --in instances.yml
+mkdir certs
+docker cp es:/usr/share/elasticsearch/certs.zip certs/certs.zip
+unzip certs/certs.zip -d certs
+docker rm -f -v es
 
 ################################################################################
 # Cleanup

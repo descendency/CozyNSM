@@ -1,6 +1,12 @@
 ################################################################################
 # Configure Variables below to your hardware settings.                         #
 ################################################################################
+# Ensure the script is being run as root
+if [[ $EUID -ne 0 ]]; then
+   echo "This script must be run as root"
+   exit 1
+fi
+
 # For setting up collection interface (ex: eth0)
 #COLLECTION_INTERFACE=<>
 echo "Interface List:"
@@ -16,7 +22,10 @@ echo ""
 read -p "Analysis Interface? " ANALYST_INTERFACE
 # The name of the domain (ex: example.com)
 #DOMAIN=<>
-read -p "Domain? " DOMAIN
+#read -p "Domain? " DOMAIN
+# Check to see if the server is correctly named and skip the DOMAIN assignment
+# if it is. Otherwise, prompt the user for a domain name.
+if (($(hostname | grep -o "\." | wc -l) > 1)); then DOMAIN=$(echo `hostname` | sed 's/^[^\.]*\.//g'); else read -p "Domain? " DOMAIN; fi
 # Default IPA Administrator Username
 read -p "Admin Name (no spaces)? " IPA_USERNAME
 # Default IPA Administrator password.
@@ -92,7 +101,6 @@ yum -y localinstall rpm/extras/*.rpm
 yum -y localinstall rpm/docker/*.rpm
 yum -y localinstall rpm/ipa-client/*.rpm
 yum -y localinstall rpm/filebeat/*.rpm
-yum -y localinstall rpm/bro/*.rpm
 yum -y localinstall rpm/bro/*.rpm
 yum -y localinstall rpm/suricata/*.rpm
 yum -y localinstall rpm/stenographer/*.rpm
