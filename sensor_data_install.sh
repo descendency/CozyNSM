@@ -66,16 +66,11 @@ export ES_DATA_NODES=2
 export ENABLE_STENOGRAPHER=true
 export ENABLE_ELK=true
 export ENABLE_SPLUNK=true
-export ENABLE_GOGS=true
-export ENABLE_CHAT=true
-export ENABLE_HIVE=true
-export ENABLE_OWNCLOUD=true
 export ENABLE_SURICATA=true
 export ENABLE_BRO=true
 # Number of stenographer collection threads.
 # 1 thread per 1 Gbps of traffic, minimum 2 threads.
 export STENO_THREADS=2
-
 ################################################################################
 # CONFIGURATION SCRIPT --- EDIT BELOW AT YOUR OWN RISK                         #
 ################################################################################
@@ -129,7 +124,6 @@ echo -e "%admins ALL=(ALL)\tALL\n" >> /etc/sudoers
 
 ################################################################################
 
-bash scripts/application_install.sh
 bash scripts/datastore_install.sh
 bash scripts/sensor_install.sh
 

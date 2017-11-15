@@ -129,8 +129,6 @@ echo -e "%admins ALL=(ALL)\tALL\n" >> /etc/sudoers
 
 ################################################################################
 
-bash scripts/application_install.sh
-bash scripts/datastore_install.sh
 bash scripts/sensor_install.sh
 
 ################################################################################
