@@ -206,10 +206,12 @@ curl -L -o ./logstash/GeoLite2-City.tar.gz http://geolite.maxmind.com/download/g
 ################################################################################
 sysctl -w vm.max_map_count=1073741824
 docker run --restart=always -itd --name es -e ELASTIC_PASSWORD=changeme elasticsearch
-docker cp elasticsearch/instances.yml es:/usr/share/elasticsearch/instances.yml
+#docker cp elasticsearch/instances.yml es:/usr/share/elasticsearch/instances.yml
+docker cp elasticsearch/instances.yml es:/usr/share/elasticsearch/config/x-pack/instances.yml
 echo certs.zip | docker exec -iu root es /usr/share/elasticsearch/bin/x-pack/certgen --in instances.yml
 mkdir certs
-docker cp es:/usr/share/elasticsearch/certs.zip certs/certs.zip
+#docker cp es:/usr/share/elasticsearch/certs.zip certs/certs.zip
+docker cp es:/usr/share/elasticsearch/config/x-pack/certs.zip certs/certs.zip
 unzip certs/certs.zip -d certs
 docker rm -f -v es
 
