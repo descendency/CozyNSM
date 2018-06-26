@@ -11,4 +11,3 @@ elasticsearch.ssl.verificationMode: certificate
 server.ssl.enabled: false
 server.ssl.key: /usr/share/kibana/config/kibana.key
 server.ssl.certificate: /usr/share/kibana/config/kibana.crt
-xpack.ssl.verification_mode: certificate

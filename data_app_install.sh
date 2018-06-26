@@ -52,7 +52,8 @@ export CHAT_IP=$IP.11
 export SPLUNK_IP=$IP.12
 export HIVE_IP=$IP.13
 export CORTEX_IP=$IP.14
-export ESDATA_IP=$IP.15
+export KAFKA_IP=$IP.15
+export ESDATA_IP=$IP.16
 # Number of Bro workers to process traffic.
 # 4 workers per 1 Gbps of traffic.
 export BRO_WORKERS=4      # For VMs
@@ -75,6 +76,12 @@ export ENABLE_BRO=true
 # Number of stenographer collection threads.
 # 1 thread per 1 Gbps of traffic, minimum 2 threads.
 export STENO_THREADS=2
+
+if $ENABLE_ELK; then
+    export IS_ELK_DATA_NOTE=true
+    export IS_ELK_SEARCH_NOTE=true
+    export IS_ELK_MASTER_NOTE=true
+fi
 
 ################################################################################
 # CONFIGURATION SCRIPT --- EDIT BELOW AT YOUR OWN RISK                         #

@@ -52,30 +52,46 @@ export CHAT_IP=$IP.11
 export SPLUNK_IP=$IP.12
 export HIVE_IP=$IP.13
 export CORTEX_IP=$IP.14
-export ESDATA_IP=$IP.15
-# Number of Bro workers to process traffic.
-# 4 workers per 1 Gbps of traffic.
-export BRO_WORKERS=4      # For VMs
-# Heap Space Allocation for Elasticsearch (do NOT use over 31g)
-export ES_RAM=2g     # 2GiB Heap Space for Elasticsearch (For VMs)
-# How many ElasticSearch Data nodes do you want? (Remember: there is 1 Master
-# and 1 Search Node, already.)
-export ES_DATA_NODES=2
+export KAFKA_IP=$IP.15
+export ESDATA_IP=$IP.16
+
 # For disabling the stenographer install - because it takes up a lot of
 # resources unnecessarily, for testing.
 export ENABLE_STENOGRAPHER=true
 export ENABLE_ELK=true
-export ENABLE_SPLUNK=true
+export ENABLE_SPLUNK=false
 export ENABLE_GOGS=true
 export ENABLE_CHAT=true
 export ENABLE_HIVE=true
 export ENABLE_OWNCLOUD=true
 export ENABLE_SURICATA=true
 export ENABLE_BRO=true
-# Number of stenographer collection threads.
-# 1 thread per 1 Gbps of traffic, minimum 2 threads.
-export STENO_THREADS=2
 
+if $ENABLE_BRO; then
+    # Number of Bro workers to process traffic.
+    # 4 workers per 1 Gbps of traffic.
+    export BRO_WORKERS=4      # For VMs
+fi
+
+if $ENABLE_STENOGRAPHER; then
+    # Number of stenographer collection threads.
+    # 1 thread per 1 Gbps of traffic, minimum 2 threads.
+    export STENO_THREADS=2
+fi
+
+if $ENABLE_ELK; then
+    # Heap Space Allocation for Elasticsearch (do NOT use over 31g)
+    export ES_RAM=2g     # 2GiB Heap Space for Elasticsearch (For VMs)
+    # How many ElasticSearch Data nodes do you want? (Remember: there is 1 Master
+    # and 1 Search Node, already.)
+    export ES_DATA_NODES=2
+fi
+
+if $ENABLE_ELK; then
+    export IS_ELK_DATA_NOTE=true
+    export IS_ELK_SEARCH_NOTE=true
+    export IS_ELK_MASTER_NOTE=true
+fi
 ################################################################################
 # CONFIGURATION SCRIPT --- EDIT BELOW AT YOUR OWN RISK                         #
 ################################################################################
@@ -140,13 +156,15 @@ if ! [[ -d /home/$IPA_USERNAME ]]; then
     mv /home/skel /home/$IPA_USERNAME
 fi
 
+HOSTNAME=""
+if (($(hostname | grep -o "\." | wc -l) > 1)); then HOSTNAME=$(hostname); else HOSTNAME=$(hostname).$DOMAIN fi
 # Configure IPA client -- Nothing bad happens if this is tried twice, so I won't check to see if it's setup.
 ipa-client-install -U --server=ipa.$DOMAIN \
                     --domain=$DOMAIN \
                     -p admin \
                     -w $IPA_ADMIN_PASSWORD \
                     --mkhomedir \
-                    --hostname server.$DOMAIN \
+                    --hostname $HOSTNAME \
                     --ntp-server=ipa.$DOMAIN
 
 # Remove root access

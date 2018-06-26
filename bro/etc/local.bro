@@ -3,8 +3,8 @@
 ##! This file will not be overwritten when upgrading or reinstalling!
 
 # Redis Writer
-#@load /opt/bro/lib/bro/plugins/Bro_Redis/scripts/init.bro
-#@load /opt/bro/lib/bro/plugins/Bro_Redis/scripts/Bro/Redis/logs-to-redis.bro
+#@load /usr/local/bro/lib/bro/plugins/Bro_Redis/scripts/init.bro
+#@load /usr/local/bro/lib/bro/plugins/Bro_Redis/scripts/Bro/Redis/logs-to-redis.bro
 
 # This script logs which scripts were loaded during each run.
 @load misc/loaded-scripts

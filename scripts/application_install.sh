@@ -45,11 +45,11 @@ if $ENABLE_CHAT; then
 fi
 if $ENABLE_HIVE; then
     docker load -i ./images/thehive.docker
-    docker load -i ./images/elasticsearch.docker
+    docker load -i ./images/eshive.docker
     docker load -i ./images/cortex.docker
 fi
 
-docker load -i ./images/fsf.docker
+#docker load -i ./images/fsf.docker
 docker load -i ./images/nginx.docker
 ################################################################################
 # INSTALL: FreeIPA                                                             #
@@ -67,8 +67,9 @@ echo -e "--setup-dns" >> /var/lib/ipa-data/ipa-server-install-options
 echo -e "--no-forwarders" >> /var/lib/ipa-data/ipa-server-install-options
 echo -e "--no-reverse" >> /var/lib/ipa-data/ipa-server-install-options
 
-docker run --name ipa --restart=always -ti -h ipa.$DOMAIN --privileged \
+docker run --name ipa --restart=always -tid -h ipa.$DOMAIN --privileged \
             -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+            -v /dev/urandom:/dev/random:ro \
             --network="appbridge" \
             --ip 172.19.0.253 \
             --ip6="2001:3200:3201::1337" \
@@ -92,6 +93,15 @@ docker run --name ipa --restart=always -ti -h ipa.$DOMAIN --privileged \
             -p $IPA_IP:9444:9444 \
             -p $IPA_IP:9445:9445 \
             freeipa
+
+            sleep 1
+
+            TMPOUT=$(docker logs ipa | tail -1)
+            while [[ $TMPOUT != "FreeIPA server configured."* ]];do
+                TMPOUT=$(docker logs ipa | tail -1)
+                sleep 0.1
+            done
+
 
 # Fixes a memory assignemnt issue I still don't completely understand.
 sysctl vm.drop_caches=3
@@ -194,7 +204,7 @@ docker run --restart=always -itd --name eshive -h eshive.$DOMAIN \
     -e "xpack.security.enabled=false" \
     -e "cluster.name=hive" \
     -e ELASTIC_PASSWORD=$IPA_ADMIN_PASSWORD \
-    elasticsearch
+    eshive
 
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
@@ -211,7 +221,7 @@ docker run --restart=always -itd --name thehive -h hive.$DOMAIN \
 
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
-
+PROXYPORTS=$PROXYPORTS"-p $HIVE_IP:80:80 -p $HIVE_IP:443:443 "
 ################################################################################
 # INSTALL: Cortex                                                              #
 ################################################################################
@@ -225,7 +235,7 @@ docker run --restart=always -itd --name cortex -h cortex.$DOMAIN \
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
 
-PROXYPORTS=$PROXYPORTS"-p $HIVE_IP:80:80 -p $HIVE_IP:443:443 -p $CORTEX_IP:80:80 -p $CORTEX_IP:443:443 "
+PROXYPORTS=$PROXYPORTS"-p $CORTEX_IP:80:80 -p $CORTEX_IP:443:443 "
 fi
 ################################################################################
 # Auto Configure SSO                                                           #
@@ -329,11 +339,10 @@ docker exec -iu root ipa ipa dnsrecord-add $DOMAIN ipa --a-rec=$IPA_IP
 docker exec -iu root ipa ipa dnsrecord-add $DOMAIN ipa-ca --a-rec=$IPA_IP
 
 if $ENABLE_ELK; then
-    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN elasticsearch --a-rec=172.18.0.$(echo $ES_IP | awk -F . '{print $4}')
-    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN es --a-rec=172.18.0.$(echo $ES_IP | awk -F . '{print $4}')
-    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN essearch --a-rec=172.18.0.$(echo $ESSEARCH_IP | awk -F . '{print $4}')
-
-docker exec -iu root ipa ipa dnsrecord-add $DOMAIN logstash --a-rec=$ES_IP
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN elasticsearch --a-rec=192.168.1.$(echo $ES_IP | awk -F . '{print $4}')
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN es --a-rec=192.168.1.$(echo $ES_IP | awk -F . '{print $4}')
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN essearch --a-rec=192.168.1.$(echo $ESSEARCH_IP | awk -F . '{print $4}')
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN logstash --a-rec=$ES_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN kibana --a-rec=$KIBANA_IP
 fi
 
@@ -355,7 +364,7 @@ if $ENABLE_HIVE; then
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN hive --a-rec=$HIVE_IP
 fi
 
-if $ENABLE_SPLUNK; then 
+if $ENABLE_SPLUNK; then
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN kafka --a-rec=$KAFKA_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN splunk --a-rec=$SPLUNK_IP
 fi
@@ -389,10 +398,10 @@ docker exec -iu root ipa ipa group-add-member admins --users=$IPA_USERNAME
 
 if $ENABLE_HIVE; then
 # Create first TheHive user (give it time to reboot)
-curl -XPOST -H 'Content-Type: application/json' -k https://hive.$DOMAIN/api/user -d '{
-  "login": "$IPA_USERNAME",
-  "name": "Cozy Admin",
-  "roles": ["read", "write", "admin"],
-  "password": "$IPA_ADMIN_PASSWORD"
-}'
+curl -XPOST -H 'Content-Type: application/json' -k https://hive.$DOMAIN/api/user -d "{
+  \"login\": \"$IPA_USERNAME\",
+  \"name\": \"Cozy Admin\",
+  \"roles\": [\"read\", \"write\", \"admin\"],
+  \"password\": \"$IPA_ADMIN_PASSWORD\"
+}"
 fi

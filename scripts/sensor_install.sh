@@ -1,15 +1,30 @@
 # Creating directories ahead of install for scripted ELK configuration.
-mkdir -p /data/bro/current
+#mkdir -p /data/bro/current
 mkdir -p /data/bro/spool
-
-# Create CozyStack installed event.
-echo "{\"ts\":\"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\", \"source\":\"Install Script\", \"message\": \"CozyStack installed. This is needed for ELK to initialize correctly.\"}" > /data/bro/current/cozy.log
+mkdir -p /data/suricata
 
 ################################################################################
 # INSTALL: Bro NSM                                                             #
 ################################################################################
 if $ENABLE_BRO; then
-    BRO_DIR=/opt
+    ip link set dev $COLLECTION_INTERFACE promisc on
+    ifup $COLLECTION_INTERFACE
+    BRO_VERSION=$(ls bro/*.tar.gz | cut -d- -f2 | grep -o "[0-9]\(\.[0-9]\)\{1,\}")
+    pushd bro
+    tar xzvf bro-$BRO_VERSION.tar.gz
+    tar xzvf bro-af_packet-plugin.tar.gz
+    popd
+    pushd bro/bro-$BRO_VERSION
+    ./configure
+    make
+    make install
+    popd
+    pushd bro/bro-af_packet-plugin
+    ./configure --bro-dist=../bro-$BRO_VERSION/ --with-kernel=/usr/include
+    make
+    make install
+    popd
+    BRO_DIR=/usr/local
     # Configure Bro to run in clustered mode.
     cp bro/etc/node.cfg $BRO_DIR/bro/etc/node.cfg
     # Configure the number of nodes for Bro.
@@ -18,7 +33,8 @@ if $ENABLE_BRO; then
       echo [worker-$COUNTER] >> $BRO_DIR/bro/etc/node.cfg
       echo type=worker >> $BRO_DIR/bro/etc/node.cfg
       echo host=localhost >> $BRO_DIR/bro/etc/node.cfg
-      echo interface=af_packet::$COLLECTION_INTERFACE >> $BRO_DIR/bro/etc/node.cfg
+      #echo interface=af_packet::$COLLECTION_INTERFACE >> $BRO_DIR/bro/etc/node.cfg
+      echo interface=$COLLECTION_INTERFACE >> $BRO_DIR/bro/etc/node.cfg
       let COUNTER=COUNTER+1
     done
     # Configure the interface to listen on.
@@ -36,6 +52,8 @@ if $ENABLE_BRO; then
     $BRO_DIR/bro/bin/broctl deploy
     $BRO_DIR/bro/bin/broctl stop
     cp bro/etc/bro.service /etc/systemd/system
+    # Create CozyStack installed event.
+    echo "{\"ts\":\"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\", \"source\":\"Install Script\", \"message\": \"CozyStack installed. This is needed for ELK to initialize correctly.\"}" > /data/bro/current/cozy.log
     systemctl enable bro
     systemctl start bro
 fi
@@ -98,6 +116,7 @@ fi
 ################################################################################
 # INSTALL: FileBeat                                                            #
 ################################################################################
+    sed -i -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" filebeat/filebeat.yml
     cp filebeat/filebeat.yml /etc/filebeat/filebeat.yml
     cp certs/FileBeat/FileBeat.crt /etc/filebeat/FileBeat.crt
     cp certs/ca/ca.crt /etc/filebeat/ca.crt

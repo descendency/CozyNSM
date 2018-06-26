@@ -6,8 +6,8 @@ After=network.target
 User=root
 Type=forking
 Environment=HOME=/
-ExecStart=/opt/bro/bin/broctl start
-ExecStop=/opt/bro/bin/broctl stop
+ExecStart=/usr/local/bro/bin/broctl start
+ExecStop=/usr/local/bro/bin/broctl stop
 
 [Install]
 WantedBy=multi-user.target

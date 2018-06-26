@@ -14,6 +14,7 @@ xpack.ssl.certificate:             /usr/share/elasticsearch/config/x-pack/CozyDa
 xpack.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/x-pack/ca.crt" ]
 xpack.security.transport.ssl.enabled: true
 xpack.ssl.verification_mode: certificate
+xpack.ssl.key_passphrase: "SSLKEYPASS"
 xpack.security.http.ssl.enabled: true
 xpack:
   security:

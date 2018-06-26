@@ -22,7 +22,6 @@ systemctl restart network
 if [ ! -f nginx/nginx.key ]; then
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout nginx/nginx.key -out nginx/nginx.crt -subj "/C=US/ST=/L=/O=CozyStack/OU=CozyStack/CN=$DOMAIN"
 openssl req -out nginx/nginx.csr -key nginx/nginx.key -new -subj "/C=US/ST=/L=/O=CozyStack/OU=CozyStack/CN=$DOMAIN"
-cat nginx/nginx.crt nginx/nginx.key > nginx/nginx.pem
 fi
 
 ################################################################################
@@ -53,6 +52,7 @@ docker load -i ./images/nginx.docker
 # INSTALL: Logstash                                                            #
 ################################################################################
 if $ENABLE_ELK; then
+    if $IS_ELK_MASTER_NOTE; then
     bash interface.sh $ANALYST_INTERFACE $ES_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     let IPCOUNTER=IPCOUNTER+1
     docker run --restart=always -itd --name logstash -h logstash.$DOMAIN \
@@ -72,23 +72,14 @@ if $ENABLE_ELK; then
         logstash:/usr/share/logstash/GeoIP/GeoLite2-City.mmdb
     docker exec -iu root logstash chown logstash:logstash \
         /usr/share/logstash/GeoIP/GeoLite2-City.mmdb
+    sed -i -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" logstash/logstash.conf
     docker cp logstash/logstash.conf \
         logstash:/usr/share/logstash/pipeline/logstash.conf
     docker cp logstash/logstash.yml \
         logstash:/usr/share/logstash/config/logstash.yml
-################################################################################
-# INSTALL: ElasticSearch Master Node                                           #
-################################################################################
-    docker run --restart=always -itd --name es -h es.$DOMAIN \
-                --network="databridge" \
-                --ip 172.18.0.$(echo $ES_IP | awk -F . '{print $4}') \
-                -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                -e ELASTIC_PASSWORD="changeme" \
-                elasticsearch
 
-    docker cp elasticsearch/instances.yml es:/usr/share/elasticsearch/config/x-pack/instances.yml
     openssl x509 -inform PEM -in certs/ca/ca.crt > certs/ca/ca.pem
-    openssl pkcs8 -in certs/Logstash/Logstash.key -topk8 -nocrypt -out certs/Logstash/Logstash.p8
+    openssl pkcs8 -in certs/Logstash/Logstash.key -passin pass:$IPA_ADMIN_PASSWORD -topk8 -nocrypt -out certs/Logstash/Logstash.p8
 
     docker cp certs/ca/ca.pem \
         logstash:/usr/share/logstash/config/ca.pem
@@ -97,18 +88,33 @@ if $ENABLE_ELK; then
     docker cp certs/Logstash/Logstash.p8 \
         logstash:/usr/share/logstash/config/Logstash.key
     docker restart logstash
+################################################################################
+# INSTALL: ElasticSearch Master Node                                           #
+################################################################################
+    docker run --restart=always -itd --name es -h es.$DOMAIN \
+                --network="databridge" \
+                --ip 172.18.0.$(echo $ES_IP | awk -F . '{print $4}') \
+                -p $ES_IP:9200:9200 \
+                -p $ES_IP:9300:9300 \
+                -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
+                -e ELASTIC_PASSWORD="changeme" \
+                elasticsearch
 
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
 
+    docker exec -itu root es mkdir -p /usr/share/elasticsearch/config/x-pack
+    docker exec -itu root es chown elasticsearch:root /usr/share/elasticsearch/config/x-pack
     sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" \
                 -e "s/IPAPASS/$IPA_ADMIN_PASSWORD/g" \
                 -e "s/IPA_IP/$IPA_IP/g" \
+                -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" \
                 -e "s/ES_IP/$ES_IP/g" \
                 -i elasticsearch/elasticsearch.yml
     docker cp elasticsearch/elasticsearch.yml \
         es:/usr/share/elasticsearch/config/elasticsearch.yml
     sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" -i elasticsearch/role_mapping.yml
+    docker exec -itu root es mkdir -p /usr/share/elasticsearch/config/x-pack
     docker cp elasticsearch/role_mapping.yml \
         es:/usr/share/elasticsearch/config/x-pack/role_mapping.yml
     docker cp certs/CozyMaster/CozyMaster.key \
@@ -117,14 +123,18 @@ if $ENABLE_ELK; then
         es:/usr/share/elasticsearch/config/x-pack/CozyMaster.crt
     docker cp certs/ca/ca.crt \
         es:/usr/share/elasticsearch/config/x-pack/ca.crt
+    fi
 ################################################################################
 # INSTALL: ElasticSearch Search Node                                           #
 ################################################################################
+    if $IS_ELK_SEARCH_NOTE; then
     bash interface.sh $ANALYST_INTERFACE $ESSEARCH_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     let IPCOUNTER=IPCOUNTER+1
     docker run --restart=always -itd --name essearch -h essearch.$DOMAIN \
                 --network="databridge" \
                 --ip 172.18.0.$(echo $ESSEARCH_IP | awk -F . '{print $4}') \
+                -p $ESSEARCH_IP:9200:9200 \
+                -p $ESSEARCH_IP:9300:9300 \
                 -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
                 -e ELASTIC_PASSWORD="changeme" \
                 elasticsearch
@@ -132,11 +142,14 @@ if $ENABLE_ELK; then
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
 
+    docker exec -itu root essearch mkdir -p /usr/share/elasticsearch/config/x-pack
+    docker exec -itu root essearch chown elasticsearch:root /usr/share/elasticsearch/config/x-pack
     sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" \
                 -e "s/IPAPASS/$IPA_ADMIN_PASSWORD/g" \
                 -e "s/LOCALDOMAIN/$DOMAIN/g" \
+                -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" \
                 -e "s/IPA_IP/$IPA_IP/g" \
-                -e "s/ES_IP/172.18.0.$(echo $ESSEARCH_IP | awk -F . '{print $4}')/g" \
+                -e "s/ES_IP/$ESSEARCH_IP/g" \
                 -i elasticsearch/elasticsearch_search.yml
     docker cp elasticsearch/elasticsearch_search.yml \
         essearch:/usr/share/elasticsearch/config/elasticsearch.yml
@@ -151,9 +164,11 @@ if $ENABLE_ELK; then
         essearch:/usr/share/elasticsearch/config/x-pack/ca.crt
 
     docker restart es essearch
+    fi
 ################################################################################
 # INSTALL: ElasticSearch Data Node(s)                                          #
 ################################################################################
+    if $IS_ELK_DATA_NOTE; then
     COUNTER=0
     while [ $COUNTER -lt $ES_DATA_NODES ]; do
         TMP_IP=$(echo $ESDATA_IP | cut -d. -f1-3).$(($(echo $ESDATA_IP | cut \
@@ -164,6 +179,8 @@ if $ENABLE_ELK; then
                     -h esdata$COUNTER.$DOMAIN \
                     --network="databridge" \
                     --ip 172.18.0.$(echo $TMP_IP | awk -F . '{print $4}') \
+                    -p $TMP_IP:9200:9200 \
+                    -p $TMP_IP:9300:9300 \
                     -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
                     -e ELASTIC_PASSWORD="changeme" \
                     elasticsearch
@@ -171,13 +188,16 @@ if $ENABLE_ELK; then
         # Fixes a memory assignemnt issue I still don't completely understand.
         sysctl vm.drop_caches=3
 
+        docker exec -itu root esdata$COUNTER mkdir -p /usr/share/elasticsearch/config/x-pack
+        docker exec -itu root esdata$COUNTER chown elasticsearch:root /usr/share/elasticsearch/config/x-pack
         cp elasticsearch/elasticsearch_data.yml tmp.yml
         sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" \
                     -e "s/NUMBER/$COUNTER/g" \
                     -e "s/IPAPASS/$IPA_ADMIN_PASSWORD/g" \
+                    -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" \
                 	-e "s/LOCALDOMAIN/$DOMAIN/g" \
                     -e "s/IPA_IP/$IPA_IP/g" \
-                    -e "s/ES_IP/172.18.0.$(echo $TMP_IP | awk -F . '{print $4}')/g" \
+                    -e "s/ES_IP/$TMP_IP/g" \
                     -i tmp.yml
         docker cp tmp.yml \
             esdata$COUNTER:/usr/share/elasticsearch/config/elasticsearch.yml
@@ -196,9 +216,11 @@ if $ENABLE_ELK; then
         docker restart esdata$COUNTER
       let COUNTER=COUNTER+1
     done
+    fi
 ################################################################################
 # INSTALL: Kibana                                                              #
 ################################################################################
+    if $IS_ELK_SEARCH_NOTE; then
     bash interface.sh $ANALYST_INTERFACE $KIBANA_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     let IPCOUNTER=IPCOUNTER+1
     docker run --restart=always -itd --name kibana -h kibana.$DOMAIN \
@@ -218,12 +240,36 @@ if $ENABLE_ELK; then
 
     docker restart kibana
     PROXYPORTS=$PROXYPORTS"-p $KIBANA_IP:80:80 -p $KIBANA_IP:443:443 "
+    fi
 fi
 
 ################################################################################
-# INSTALL: BusyBox for Splunk Enterprise                                       #
+# INSTALL: Zookeeper                                                           #
 ################################################################################
 if $ENABLE_SPLUNK; then
+#docker run --restart=always -itd --name kafka -h kafka.$DOMAIN \
+#        --ip 172.18.0.100 \
+#        --network="databridge" \
+#        zookeeper
+
+        # Fixes a memory assignemnt issue I still don't completely understand.
+#        sysctl vm.drop_caches=3
+################################################################################
+# INSTALL: Kafka                                                               #
+################################################################################
+#docker run --restart=always -itd --name kafka -h kafka.$DOMAIN \
+#        -p $KAFKA_IP:9092:9092 \
+#        --network="databridge" \
+#        -e KAFKA_ADVERTISED_PORT="9092" \
+#        -e KAFKA_CREATE_TOPICS="bro_raw:1:1,suricata_raw:1:1" \
+#        -e KAFKA_ZOOKEEPER_CONNECT="172.18.0.100" \
+#        kafka
+
+        # Fixes a memory assignemnt issue I still don't completely understand.
+#        sysctl vm.drop_caches=3
+################################################################################
+# INSTALL: BusyBox for Splunk Enterprise                                       #
+################################################################################
     bash interface.sh $ANALYST_INTERFACE $SPLUNK_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     let IPCOUNTER=IPCOUNTER+1
     docker run --restart=always -itd --name vsplunk -h busybox.$DOMAIN \
@@ -253,6 +299,7 @@ if $ENABLE_SPLUNK; then
     PROXYPORTS=$PROXYPORTS"-p $SPLUNK_IP:80:80 -p $SPLUNK_IP:443:443 "
 fi
 
+if $IS_ELK_DATA_NOTE || $ENABLE_SPLUNK; then
 ################################################################################
 # INSTALL: NGINX Reverse Proxy                                                 #
 ################################################################################
@@ -283,6 +330,7 @@ docker cp nginx/nginx.conf dataproxy:/etc/nginx/nginx.conf
 
 # Start Reverse proxy
 docker restart dataproxy
+fi
 
 if $ENABLE_ELK; then
 # Automate the Kibana Index Choosing

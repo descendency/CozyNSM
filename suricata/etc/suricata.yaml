@@ -49,57 +49,7 @@ vars:
 
 default-rule-path: /etc/suricata/rules
 rule-files:
- - botcc.rules
- - ciarmy.rules
- - compromised.rules
- - drop.rules
- - dshield.rules
-# - emerging-activex.rules
- - emerging-attack_response.rules
- - emerging-chat.rules
- - emerging-current_events.rules
- - emerging-dns.rules
- - emerging-dos.rules
- - emerging-exploit.rules
- - emerging-ftp.rules
-# - emerging-games.rules
-# - emerging-icmp_info.rules
-# - emerging-icmp.rules
- - emerging-imap.rules
-# - emerging-inappropriate.rules
- - emerging-malware.rules
- - emerging-misc.rules
- - emerging-mobile_malware.rules
- - emerging-netbios.rules
- - emerging-p2p.rules
- - emerging-policy.rules
- - emerging-pop3.rules
- - emerging-rpc.rules
- - emerging-scada.rules
- - emerging-scan.rules
-# - emerging-shellcode.rules
- - emerging-smtp.rules
- - emerging-snmp.rules
- - emerging-sql.rules
- - emerging-telnet.rules
- - emerging-tftp.rules
- - emerging-trojan.rules
- - emerging-user_agents.rules
- - emerging-voip.rules
- - emerging-web_client.rules
- - emerging-web_server.rules
-# - emerging-web_specific_apps.rules
- - emerging-worm.rules
- - tor.rules
-# - decoder-events.rules # available in suricata sources under rules dir
-# - stream-events.rules  # available in suricata sources under rules dir
- - http-events.rules    # available in suricata sources under rules dir
- - smtp-events.rules    # available in suricata sources under rules dir
- - dns-events.rules     # available in suricata sources under rules dir
- - tls-events.rules     # available in suricata sources under rules dir
-# - modbus-events.rules  # available in suricata sources under rules dir
-# - app-layer-events.rules  # available in suricata sources under rules dir
-# - dnp3-events.rules       # available in suricata sources under rules dir
+ - emerging-all.rules
 
 classification-file: /etc/suricata/classification.config
 reference-config-file: /etc/suricata/reference.config
@@ -113,7 +63,7 @@ reference-config-file: /etc/suricata/reference.config
 # The default logging directory.  Any log or output file will be
 # placed here if its not specified with a full path name. This can be
 # overridden with the -l command line parameter.
-default-log-dir: /var/log/suricata/
+default-log-dir: /data/suricata/
 
 # global stats configuration
 stats:
@@ -140,7 +90,7 @@ outputs:
       # the following are valid when type: syslog above
       #identity: "suricata"
       #facility: local5
-      #level: Info ## possible levels: Emergency, Alert, Critical,
+      level: Emergency ## possible levels: Emergency, Alert, Critical,
                    ## Error, Warning, Notice, Info, Debug
       #redis:
       #  server: 127.0.0.1
@@ -596,7 +546,7 @@ af-packet:
 
 # Cross platform libpcap capture support
 pcap:
-  - interface: eth0
+  - interface: DEVICENAME
     # On Linux, pcap will try to use mmaped capture and will use buffer-size
     # as total of memory used by the ring. So set this to something bigger
     # than 1% of your bandwidth.
@@ -1572,7 +1522,7 @@ netmap:
 # PF_RING configuration. for use with native PF_RING support
 # for more info see http://www.ntop.org/products/pf_ring/
 pfring:
-  - interface: eth0
+  - interface: DEVICENAME
     # Number of receive threads (>1 will enable experimental flow pinned
     # runmode)
     threads: 1

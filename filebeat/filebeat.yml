@@ -103,6 +103,7 @@ output.logstash:
   ssl.certificate_authorities: ["/etc/filebeat/ca.crt"]
   ssl.certificate: "/etc/filebeat/FileBeat.crt"
   ssl.key: "/etc/filebeat/FileBeat.key"
+  ssl.key_passphrase: "SSLKEYPASS"
   # Optional SSL. By default is off.
   # List of root certificates for HTTPS server verifications
   #ssl.certificate_authorities: ["/etc/pki/root/ca.pem"]
@@ -115,18 +116,18 @@ output.logstash:
 
 #------------------------------- Kafka output ---------------------------------
 
-output.kafka:
+#output.kafka:
   # initial brokers for reading cluster metadata
-  hosts: ["kafka:9092"]
+#  hosts: ["kafka:9092"]
 
   # message topic selection + partitioning
-  topic: '%{[type]}'
-  partition.round_robin:
-    reachable_only: false
+#  topic: '%{[type]}'
+#  partition.round_robin:
+#    reachable_only: false
 
-  required_acks: 1
-  compression: gzip
-  max_message_bytes: 1000000
+#  required_acks: 1
+#  compression: gzip
+#  max_message_bytes: 1000000
 
 #================================ Logging =====================================
 

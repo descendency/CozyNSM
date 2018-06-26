@@ -2,6 +2,7 @@ cluster.name: CozyStack
 node.name: "CozySearch"
 node.master: false
 node.data: false
+node.ingest: false
 network.host: 0.0.0.0
 network.publish_host: ES_IP
 discovery.zen.ping.unicast.hosts: ["es.LOCALDOMAIN"]
@@ -14,6 +15,7 @@ xpack.ssl.certificate:             /usr/share/elasticsearch/config/x-pack/CozySe
 xpack.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/x-pack/ca.crt" ]
 xpack.security.transport.ssl.enabled: true
 xpack.ssl.verification_mode: certificate
+xpack.ssl.key_passphrase: "SSLKEYPASS"
 xpack.security.http.ssl.enabled: true
 xpack:
   security:
