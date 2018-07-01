@@ -3,9 +3,10 @@
 ################################################################################
 ELASTIC_VERSION=6.3.0
 BRO_VERSION=2.5.4
+SPLUNK_VERSION=7.1.0
 
 read -p "Domain? " DOMAIN
-
+echo -e "\n!!You must enter the exact same admin password during install!!"
 read -p "Admin Password? " PASSWORD
 
 ################################################################################
@@ -144,16 +145,16 @@ docker save -o ./images/kibana.docker kibana
 docker rmi docker.elastic.co/kibana/kibana:$ELASTIC_VERSION
 
 # Splunk
-docker pull splunk/splunk
-docker tag splunk/splunk splunk
+docker pull splunk/splunk:$SPLUNK_VERSION
+docker tag splunk/splunk:$SPLUNK_VERSION splunk
 docker save -o ./images/splunk.docker splunk
-docker rmi splunk/splunk
+docker rmi splunk/splunk:$SPLUNK_VERSION
 
 # Universal Splunk Forwarder
-docker pull splunk/universalforwarder
-docker tag splunk/universalforwarder universalforwarder
+docker pull splunk/universalforwarder:$SPLUNK_VERSION
+docker tag splunk/universalforwarder:$SPLUNK_VERSION universalforwarder
 docker save -o ./images/universalforwarder.docker universalforwarder
-docker rmi splunk/universalforwarder
+docker rmi splunk/universalforwarder:$SPLUNK_VERSION
 
 # BusyBox for Splunk
 docker pull busybox
@@ -201,34 +202,6 @@ docker tag docker.elastic.co/elasticsearch/elasticsearch:5.5.3 eshive
 docker save -o ./images/eshive.docker eshive
 docker rmi docker.elastic.co/elasticsearch/elasticsearch:5.5.3
 
-# DokuWiki
-#docker pull mprasil/dokuwiki
-#docker tag mprasil/dokuwiki dokuwiki
-#docker save -o ./images/dokuwiki.docker dokuwiki
-#docker rmi mprasil/dokuwiki
-
-# Etherpad
-#docker pull tvelocity/etherpad-lite
-#docker tag tvelocity/etherpad-lite etherpad
-#docker save -o ./images/etherpad.docker etherpad
-#docker rmi tvelocity/etherpad-lite
-
-# FSF
-#docker pull wzod/fsf
-#docker tag wzod/fsf fsf
-#docker save -o ./images/fsf.docker fsf
-#docker rmi wzod/fsf
-
-# Kafka
-#docker pull wurstmeister/kafka:0.10.2.1
-#docker tag wurstmeister/kafka:0.10.2.1 kafka
-#docker save -o ./images/kafka.docker kafka
-#docker rmi wurstmeister/kafka:0.10.2.1
-
-# Zookeeper
-#docker pull zookeeper
-#docker save -o ./images/zookeeper.docker zookeeper
-
 ################################################################################
 # Big Files
 ################################################################################
@@ -250,3 +223,5 @@ rm -rf *.tar.gz
 rm -rf metron-bro-plugin-kafka
 rm -rf tar
 rm -rf /tmp/*.yumtx
+
+tar -czv --remove-files -f install-$(date '+%Y%b%d' | awk '{print toupper($0)}').tar.gz *

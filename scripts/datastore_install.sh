@@ -35,26 +35,25 @@ docker network create --driver=bridge --subnet=172.18.0.0/24 --gateway=172.18.0.
 # LOAD: Docker Images                                                          #
 ################################################################################
 if $ENABLE_ELK; then
-    docker load -i ./images/logstash.docker
-    docker load -i ./images/elasticsearch.docker
-    docker load -i ./images/kibana.docker
+    docker load -q -i ./images/logstash.docker
+    docker load -q -i ./images/elasticsearch.docker
+    docker load -q -i ./images/kibana.docker
 fi
 
 if $ENABLE_SPLUNK; then
-    docker load -i ./images/splunk.docker
-    docker load -i ./images/busybox.docker
-    docker load -i ./images/universalforwarder.docker
+    docker load -q -i ./images/splunk.docker
+    docker load -q -i ./images/busybox.docker
+    docker load -q -i ./images/universalforwarder.docker
 fi
 
-docker load -i ./images/nginx.docker
+docker load -q -i ./images/nginx.docker
 
 ################################################################################
 # INSTALL: Logstash                                                            #
 ################################################################################
 if $ENABLE_ELK; then
     if $IS_ELK_MASTER_NOTE; then
-    bash interface.sh $ANALYST_INTERFACE $ES_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-    let IPCOUNTER=IPCOUNTER+1
+    bash scripts/interface.sh $ANALYST_INTERFACE $ES_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     docker run --restart=always -itd --name logstash -h logstash.$DOMAIN \
                 -p $ES_IP:5044:5044 \
                 --network="databridge" \
@@ -116,7 +115,7 @@ if $ENABLE_ELK; then
     sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" -i elasticsearch/role_mapping.yml
     docker exec -itu root es mkdir -p /usr/share/elasticsearch/config/x-pack
     docker cp elasticsearch/role_mapping.yml \
-        es:/usr/share/elasticsearch/config/x-pack/role_mapping.yml
+        es:/usr/share/elasticsearch/config/role_mapping.yml
     docker cp certs/CozyMaster/CozyMaster.key \
         es:/usr/share/elasticsearch/config/x-pack/CozyMaster.key
     docker cp certs/CozyMaster/CozyMaster.crt \
@@ -128,8 +127,7 @@ if $ENABLE_ELK; then
 # INSTALL: ElasticSearch Search Node                                           #
 ################################################################################
     if $IS_ELK_SEARCH_NOTE; then
-    bash interface.sh $ANALYST_INTERFACE $ESSEARCH_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-    let IPCOUNTER=IPCOUNTER+1
+    bash scripts/interface.sh $ANALYST_INTERFACE $ESSEARCH_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     docker run --restart=always -itd --name essearch -h essearch.$DOMAIN \
                 --network="databridge" \
                 --ip 172.18.0.$(echo $ESSEARCH_IP | awk -F . '{print $4}') \
@@ -155,7 +153,7 @@ if $ENABLE_ELK; then
         essearch:/usr/share/elasticsearch/config/elasticsearch.yml
     sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" -i elasticsearch/role_mapping.yml
     docker cp elasticsearch/role_mapping.yml \
-        essearch:/usr/share/elasticsearch/config/x-pack/role_mapping.yml
+        essearch:/usr/share/elasticsearch/config/role_mapping.yml
     docker cp certs/CozySearch/CozySearch.key \
         essearch:/usr/share/elasticsearch/config/x-pack/CozySearch.key
     docker cp certs/CozySearch/CozySearch.crt \
@@ -173,8 +171,7 @@ if $ENABLE_ELK; then
     while [ $COUNTER -lt $ES_DATA_NODES ]; do
         TMP_IP=$(echo $ESDATA_IP | cut -d. -f1-3).$(($(echo $ESDATA_IP | cut \
             -d. -f4)+$COUNTER))
-        bash interface.sh $ANALYST_INTERFACE $TMP_IP $(($(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))+$COUNTER))
-        let IPCOUNTER=IPCOUNTER+1
+        bash scripts/interface.sh $ANALYST_INTERFACE $TMP_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
         docker run --restart=always -itd --name esdata$COUNTER \
                     -h esdata$COUNTER.$DOMAIN \
                     --network="databridge" \
@@ -205,7 +202,7 @@ if $ENABLE_ELK; then
         sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" \
             -i elasticsearch/role_mapping.yml
         docker cp elasticsearch/role_mapping.yml \
-            esdata$COUNTER:/usr/share/elasticsearch/config/x-pack/role_mapping.yml
+            esdata$COUNTER:/usr/share/elasticsearch/config/role_mapping.yml
 
         docker cp certs/CozyMaster/CozyMaster.key \
             esdata$COUNTER:/usr/share/elasticsearch/config/x-pack/CozyData$COUNTER.key
@@ -214,15 +211,14 @@ if $ENABLE_ELK; then
         docker cp certs/ca/ca.crt \
             esdata$COUNTER:/usr/share/elasticsearch/config/x-pack/ca.crt
         docker restart esdata$COUNTER
-      let COUNTER=COUNTER+1
+      let COUNTER=$COUNTER+1
     done
     fi
 ################################################################################
 # INSTALL: Kibana                                                              #
 ################################################################################
     if $IS_ELK_SEARCH_NOTE; then
-    bash interface.sh $ANALYST_INTERFACE $KIBANA_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-    let IPCOUNTER=IPCOUNTER+1
+    bash scripts/interface.sh $ANALYST_INTERFACE $KIBANA_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     docker run --restart=always -itd --name kibana -h kibana.$DOMAIN \
                 --network="databridge" \
                 --ip 172.18.0.$(echo $KIBANA_IP | awk -F . '{print $4}') \
@@ -243,35 +239,11 @@ if $ENABLE_ELK; then
     fi
 fi
 
-################################################################################
-# INSTALL: Zookeeper                                                           #
-################################################################################
 if $ENABLE_SPLUNK; then
-#docker run --restart=always -itd --name kafka -h kafka.$DOMAIN \
-#        --ip 172.18.0.100 \
-#        --network="databridge" \
-#        zookeeper
-
-        # Fixes a memory assignemnt issue I still don't completely understand.
-#        sysctl vm.drop_caches=3
-################################################################################
-# INSTALL: Kafka                                                               #
-################################################################################
-#docker run --restart=always -itd --name kafka -h kafka.$DOMAIN \
-#        -p $KAFKA_IP:9092:9092 \
-#        --network="databridge" \
-#        -e KAFKA_ADVERTISED_PORT="9092" \
-#        -e KAFKA_CREATE_TOPICS="bro_raw:1:1,suricata_raw:1:1" \
-#        -e KAFKA_ZOOKEEPER_CONNECT="172.18.0.100" \
-#        kafka
-
-        # Fixes a memory assignemnt issue I still don't completely understand.
-#        sysctl vm.drop_caches=3
 ################################################################################
 # INSTALL: BusyBox for Splunk Enterprise                                       #
 ################################################################################
-    bash interface.sh $ANALYST_INTERFACE $SPLUNK_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-    let IPCOUNTER=IPCOUNTER+1
+    bash scripts/interface.sh $ANALYST_INTERFACE $SPLUNK_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     docker run --restart=always -itd --name vsplunk -h busybox.$DOMAIN \
                 --network="databridge" \
                 -v /opt/splunk/etc \

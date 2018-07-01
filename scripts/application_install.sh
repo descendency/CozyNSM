@@ -31,31 +31,30 @@ docker network create --driver=bridge --subnet=172.19.0.0/24 --gateway=172.19.0.
 ################################################################################
 # LOAD: Docker Images                                                          #
 ################################################################################
-docker load -i ./images/freeipa.docker
+docker load -q -i ./images/freeipa.docker
 
 if $ENABLE_GOGS; then
-    docker load -i ./images/gogs.docker
+    docker load -q -i ./images/gogs.docker
 fi
 if $ENABLE_OWNCLOUD; then
-    docker load -i ./images/owncloud.docker
+    docker load -q -i ./images/owncloud.docker
 fi
 if $ENABLE_CHAT; then
-    docker load -i ./images/mongo.docker
-    docker load -i ./images/rocketchat.docker
+    docker load -q -i ./images/mongo.docker
+    docker load -q -i ./images/rocketchat.docker
 fi
 if $ENABLE_HIVE; then
-    docker load -i ./images/thehive.docker
-    docker load -i ./images/eshive.docker
-    docker load -i ./images/cortex.docker
+    docker load -q -i ./images/thehive.docker
+    docker load -q -i ./images/eshive.docker
+    docker load -q -i ./images/cortex.docker
 fi
 
 #docker load -i ./images/fsf.docker
-docker load -i ./images/nginx.docker
+docker load -q -i ./images/nginx.docker
 ################################################################################
 # INSTALL: FreeIPA                                                             #
 ################################################################################
-bash interface.sh $ANALYST_INTERFACE $IPA_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-let IPCOUNTER=IPCOUNTER+1
+bash scripts/interface.sh $ANALYST_INTERFACE $IPA_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
 mkdir -p /var/lib/ipa-data
 echo -e "-U" > /var/lib/ipa-data/ipa-server-install-options
 echo -e "-r $DOMAIN" >> /var/lib/ipa-data/ipa-server-install-options
@@ -111,8 +110,7 @@ sysctl vm.drop_caches=3
 # INSTALL: GoGS                                                                #
 ################################################################################
 if $ENABLE_GOGS; then
-    bash interface.sh $ANALYST_INTERFACE $GOGS_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-    let IPCOUNTER=IPCOUNTER+1
+    bash scripts/interface.sh $ANALYST_INTERFACE $GOGS_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     docker run --restart=always -itd --name gogs -h gogs.$DOMAIN \
                 --ip 172.19.0.$(echo $GOGS_IP | awk -F . '{print $4}') \
                 --network="appbridge" \
@@ -131,8 +129,7 @@ fi
 # INSTALL: MongoDB for Rocket.Chat                                             #
 ################################################################################
 if $ENABLE_CHAT; then
-    bash interface.sh $ANALYST_INTERFACE $CHAT_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-    let IPCOUNTER=IPCOUNTER+1
+    bash scripts/interface.sh $ANALYST_INTERFACE $CHAT_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     docker run --name mongodb --restart=always -tid -h mongodb.$DOMAIN \
                 --ip 172.19.0.4 \
                 --network="appbridge" \
@@ -181,8 +178,7 @@ fi
 # INSTALL: OwnCloud                                                            #
 ################################################################################
 if $ENABLE_OWNCLOUD; then
-    bash interface.sh $ANALYST_INTERFACE $OWNCLOUD_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-    let IPCOUNTER=IPCOUNTER+1
+    bash scripts/interface.sh $ANALYST_INTERFACE $OWNCLOUD_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
     docker run --restart=always -itd --name owncloud -h owncloud.$DOMAIN \
                 --ip 172.19.0.$(echo $OWNCLOUD_IP | awk -F . '{print $4}') \
                 --network="appbridge" \
@@ -212,8 +208,7 @@ docker run --restart=always -itd --name eshive -h eshive.$DOMAIN \
 ################################################################################
 # INSTALL: TheHive                                                             #
 ################################################################################
-bash interface.sh $ANALYST_INTERFACE $HIVE_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-let IPCOUNTER=IPCOUNTER+1
+bash scripts/interface.sh $ANALYST_INTERFACE $HIVE_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
 docker run --restart=always -itd --name thehive -h hive.$DOMAIN \
     --network="appbridge" \
     --ip 172.19.0.110 \
@@ -225,8 +220,7 @@ PROXYPORTS=$PROXYPORTS"-p $HIVE_IP:80:80 -p $HIVE_IP:443:443 "
 ################################################################################
 # INSTALL: Cortex                                                              #
 ################################################################################
-bash interface.sh $ANALYST_INTERFACE $CORTEX_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
-let IPCOUNTER=IPCOUNTER+1
+bash scripts/interface.sh $ANALYST_INTERFACE $CORTEX_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
 docker run --restart=always -itd --name cortex -h cortex.$DOMAIN \
     --network="appbridge" \
     --ip 172.19.0.112 \
@@ -291,6 +285,10 @@ if $ENABLE_HIVE; then
     sed -i -e "s/IPAADMINUSER/$IPA_USERNAME/g" -e "s/IPAIP/$IPA_IP/g" -e "s/IPA_ADMIN_PASSWORD/$IPA_ADMIN_PASSWORD/g" -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" thehive/application.conf
     docker cp thehive/application.conf thehive:/etc/thehive/application.conf
     docker restart thehive
+
+    sed -i -e "s/IPAADMINUSER/$IPA_USERNAME/g" -e "s/IPAIP/$IPA_IP/g" -e "s/IPA_ADMIN_PASSWORD/$IPA_ADMIN_PASSWORD/g" -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" cortex/application.conf
+    docker cp cortex/application.conf cortex:/etc/cortex/application.conf
+    docker restart cortex
 fi
 
 ################################################################################
@@ -365,7 +363,6 @@ if $ENABLE_HIVE; then
 fi
 
 if $ENABLE_SPLUNK; then
-    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN kafka --a-rec=$KAFKA_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN splunk --a-rec=$SPLUNK_IP
 fi
 

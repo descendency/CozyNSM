@@ -9,7 +9,8 @@ be done prior to installation.
 ### Pre-Install
 From another machine (I recommend creating a virtual machine), you must run
 ```preinstall.sh```. This will download all of the required files for the
-installation. Once this has completed, move those files onto the server.
+installation. This will output ```install-date.tar.gz``` after the script has
+finished. Once this has completed, move the file onto your the server(s).
 
 (In the future, this may be a multi-server build for those that need this
 capability. The same process will apply.)
@@ -32,7 +33,7 @@ Click Continue.
 Hostname'
     * In the bottom left, set the hostname. (suggested: server.test.lan if
     you want test.lan as your domain.)
-    * In the left, click the interface connected to the Gigamon. Click the
+    * In the left, click the interface connected to the network tap. Click the
     'On' switch in the top right.
     * In the left, now click the interface connected to a switch (for
     analysts). Click 'Configure' in the bottom right-ish.
@@ -66,7 +67,7 @@ Hostname'
     * Double click Done.
     * Click Accept Changes in the box that pops up.
 1. Select 'Security Policy'
-    * Select 'Pre-release Draft STIG For CentOS 7 Linux Servers'.
+    * Select 'DISA STIG For RedHat 7 Linux Servers'.
     * Click Select Profile.
     * Click Done.
 1. Select Date & Time.
@@ -91,19 +92,9 @@ Once CentOS has finished installing, log in as root.
 1. Run the following commands:
     * *From the laptop*: Copy files for Cozy to the server.
     * Enable the install script to run ("chmod +x install.sh").
-1. The script currently does not prompt the user. You may need to change
-the following values (in install.sh):
-    * BRO_WORKERS=4 [Bro workers should be assigned based on the number of gbps
-    you are going to need to collect. Generally, 4 workers per 1 gbps. Each
-    worker requires 1 CPU core, therefore don't set this to 400 expecting to
-    collect 100gbps for free. (Hardware matters). By default, I would suggest 4
-    workers for a 1Gbps network.]
-    * ES_RAM=30g [The Elasticsearch Heap Size should be between 2g and 31g.
-    Do not put more than this. It will cause massive performance degredation due
-    to how the JVM (java virtual machine) allocates memory.]
-    * ES_DATA_NODES=1
-    * And all of the IP schema values.
-1. Run install.sh.
+1. The script requires some configuration. Edit the values in
+scripts/install_settings.sh to meet your network requirements.
+1. Run ```bash full_install.sh```.
 1. This script will prompt the installer for a few things.
 Answer them like this:
     * The collection interface is the interface plugged into the tap.

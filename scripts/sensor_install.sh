@@ -16,13 +16,13 @@ if $ENABLE_BRO; then
     popd
     pushd bro/bro-$BRO_VERSION
     ./configure
-    make
-    make install
+    make -s -j$(ps -e -o psr= | sort | uniq | wc -l)
+    make install -s -j$(ps -e -o psr= | sort | uniq | wc -l)
     popd
     pushd bro/bro-af_packet-plugin
     ./configure --bro-dist=../bro-$BRO_VERSION/ --with-kernel=/usr/include
-    make
-    make install
+    make -s -j$(ps -e -o psr= | sort | uniq | wc -l)
+    make install -s -j$(ps -e -o psr= | sort | uniq | wc -l)
     popd
     BRO_DIR=/usr/local
     # Configure Bro to run in clustered mode.
@@ -116,9 +116,33 @@ fi
 ################################################################################
 # INSTALL: FileBeat                                                            #
 ################################################################################
+if $ENABLE_ELK; then
     sed -i -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" filebeat/filebeat.yml
     cp filebeat/filebeat.yml /etc/filebeat/filebeat.yml
     cp certs/FileBeat/FileBeat.crt /etc/filebeat/FileBeat.crt
     cp certs/ca/ca.crt /etc/filebeat/ca.crt
     cp certs/FileBeat/FileBeat.key /etc/filebeat/FileBeat.key
+    systemctl enable filebeat
     systemctl restart filebeat
+fi
+
+if $ENABLE_SPLUNK; then
+    mkdir -p /data/splunk/var
+    mkdir -p /data/splunk/etc
+
+    docker load -i images/universalforwarder.docker
+
+    docker run --restart=always -d --name forwarder \
+        -e SPLUNK_START_ARGS=--accept-license \
+        -e SPLUNK_FORWARD_SERVER=$SPLUNK_IP:9997 \
+        -e SPLUNK_USER=root \
+        -v /data:/data:ro \
+        -v /var/lib/docker/containers:/host/containers:ro \
+        -v /var/log:/docker/log:ro \
+        -v /var/run/docker.sock:/var/run/docker.sock:ro \
+        -v volume_splunkuf_etc:/opt/splunk/etc \
+        -v volume_splunkuf_var:/opt/splunk/var \
+        universalforwarder
+
+    # docker copy configuration files
+fi
