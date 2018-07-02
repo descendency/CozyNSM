@@ -164,7 +164,7 @@ if $ENABLE_CHAT; then
     			-e OVERWRITE_SETTING_LDAP_Import_Users="True" \
     			-e ROOT_URL=http://$CHAT_IP \
     			-e MONGO_URL=mongodb://172.19.0.4/mydb \
-    			-e ADMIN_USERNAME=cozyadmin \
+    			-e ADMIN_USERNAME=localadmin \
     			-e ADMIN_PASS=$IPA_ADMIN_PASSWORD \
     			-e ADMIN_EMAIL=cozyadmin@cozy.lan \
     			--link mongodb \
@@ -239,6 +239,7 @@ if $ENABLE_GOGS; then
 # GoGS
 sed -e "s/GOGSDOMAIN/gogs.$DOMAIN/g" -i gogs/app.ini
 docker cp gogs/app.ini gogs:/data/gogs/conf/app.ini
+sqlite3 gogs/gogs.db "UPDATE user SET lower_name=\"localadmin\", name=\"localadmin\", email=\"$IPA_USERNAME@$DOMAIN\", avatar_email=\"$IPA_USERNAME@$DOMAIN\" WHERE id=1;"
 sqlite3 gogs/gogs.db "$(sed -e "s/IPA_IP/$IPA_IP/g" -e "s/DOMAIN/dc=${DOMAIN//\./,dc=}/g" -e "s/ADMIN_PASSWORD/$IPA_ADMIN_PASSWORD/g" gogs/test.txt)"
 docker cp gogs/gogs.db gogs:/app/gogs/data/gogs.db
 docker exec -itu root gogs chmod a+w /app/gogs/data/gogs.db
@@ -257,7 +258,7 @@ docker exec -itu www-data owncloud tar xzvf /var/www/html/apps/user_ldap-0.9.1.t
 docker exec -itu root owncloud chown www-data:nogroup -R /var/www/html/apps/
 docker cp nginx/nginx.crt owncloud:/etc/ssl/certs/nginx.crt
 docker cp nginx/nginx.key owncloud:/etc/ssl/certs/nginx.key
-docker exec -itu www-data owncloud php occ maintenance:install --database="sqlite" --database-name="owncloud" --database-table-prefix="oc_" --admin-user "cozyadmin" --admin-pass "$IPA_ADMIN_PASSWORD"
+docker exec -itu www-data owncloud php occ maintenance:install --database="sqlite" --database-name="owncloud" --database-table-prefix="oc_" --admin-user "localadmin" --admin-pass "$IPA_ADMIN_PASSWORD"
 docker exec -itu www-data owncloud php occ app:enable user_ldap
 docker exec -itu www-data owncloud php occ ldap:create-empty-config
 docker exec -itu www-data owncloud php occ ldap:set-config s01 ldapHost "$IPA_IP"
@@ -396,7 +397,7 @@ docker exec -iu root ipa ipa group-add-member admins --users=$IPA_USERNAME
 if $ENABLE_HIVE; then
 # Create first TheHive user (give it time to reboot)
 curl -XPOST -H 'Content-Type: application/json' -k https://hive.$DOMAIN/api/user -d "{
-  \"login\": \"$IPA_USERNAME\",
+  \"login\": \"localadmin\",
   \"name\": \"Cozy Admin\",
   \"roles\": [\"read\", \"write\", \"admin\"],
   \"password\": \"$IPA_ADMIN_PASSWORD\"

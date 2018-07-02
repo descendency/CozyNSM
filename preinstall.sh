@@ -38,21 +38,21 @@ rm -rf /root/rpmbuild/SOURCES/*
 sed -e "s/repo_gpgcheck=1/repo_gpgcheck=0/g" -e "s/localpkg_gpgcheck=1/localpkg_gpgcheck=0/g" -i /etc/yum.conf
 yum clean all
 # Updates
-yum -y update --downloadonly --downloaddir=./rpm/updates
+yum -y -q -e 0 update --downloadonly --downloaddir=./rpm/updates
 # These break the network connection for some reason.
 #rm -rf ./rpm/updates/NetworkManager*
 
 # Extras
-yum -y install --downloadonly --downloaddir=./rpm/extras git wget rng-tools
-yum -y install git wget rng-tools
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/extras git wget rng-tools
+yum -y -q -e 0 install git wget rng-tools
 curl -L -o ./rpm/extras/epel-release-7-11.noarch.rpm -O http://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/e/epel-release-7-11.noarch.rpm
 rpm --import http://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
-yum -y install ./rpm/extras/epel-release-7-11.noarch.rpm
-yum -y install --downloadonly --downloaddir=./rpm/extras rpm-build elfutils-libelf rpm rpm-libs rpm-python
-yum -y install rpm-build elfutils-libelf rpm rpm-libs rpm-python
+yum -y -q -e 0 install ./rpm/extras/epel-release-7-11.noarch.rpm
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/extras rpm-build elfutils-libelf rpm rpm-libs rpm-python
+yum -y -q -e 0 install rpm-build elfutils-libelf rpm rpm-libs rpm-python
 
 # Stenographer
-yum -y install --downloadonly --downloaddir=./rpm/stenographer libaio-devel leveldb-devel snappy-devel gcc-c++ make libpcap-devel libseccomp-devel git golang libaio leveldb snappy libpcap libseccomp tcpdump curl rpmlib jq systemd mock rpm-build
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/stenographer libaio-devel leveldb-devel snappy-devel gcc-c++ make libpcap-devel libseccomp-devel git golang libaio leveldb snappy libpcap libseccomp tcpdump curl rpmlib jq systemd mock rpm-build
 #yum -y install libaio-devel leveldb-devel snappy-devel gcc-c++ make libpcap-devel libseccomp-devel git golang libaio leveldb snappy libpcap libseccomp tcpdump curl rpmlib jq systemd mock rpm-build
 #TMPDIR=$(mktemp -d)
 #pushd $TMPDIR
@@ -66,23 +66,23 @@ yum -y install --downloadonly --downloaddir=./rpm/stenographer libaio-devel leve
 #mv /var/lib/mock/epel-7-x86_64/result/stenographer*.x86_64.rpm rpm/stenographer
 
 # Docker
-yum -y install --downloadonly --downloaddir=./rpm/docker yum-utils device-mapper-persistent-data lvm2
-yum -y install yum-utils device-mapper-persistent-data lvm2
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/docker yum-utils device-mapper-persistent-data lvm2
+yum -y -q -e 0 install yum-utils device-mapper-persistent-data lvm2
 yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-yum -y install --downloadonly --downloaddir=./rpm/docker docker-ce
-yum -y install docker-ce
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/docker docker-ce
+yum -y -q -e 0 install docker-ce
 # Start Docker Service
 systemctl start docker
 
 # IPA-client
-yum -y install --downloadonly --downloaddir=./rpm/ipa-client ipa-client
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/ipa-client ipa-client
 
 # FileBeat
 curl -L -o ./rpm/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm
-yum -y install --downloadonly --downloaddir=./rpm/filebeat ./rpm/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/filebeat ./rpm/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm
 
 # Bro
-yum -y install --downloadonly --downloaddir=./rpm/bro bind-devel bison cmake flex GeoIP-devel gcc-c++ gperftools-devel jemalloc-devel libpcap-devel openssl-devel python2-devel python-tools swig zlib-devel python-devel kernel-devel kernel-headers librdkafka-devel
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/bro bind-devel bison cmake flex GeoIP-devel gcc-c++ gperftools-devel jemalloc-devel libpcap-devel openssl-devel python2-devel python-tools swig zlib-devel python-devel kernel-devel kernel-headers librdkafka-devel
 #yum -y install bind-devel bison cmake flex GeoIP-devel gcc-c++ gperftools-devel jemalloc-devel libpcap-devel openssl-devel python2-devel python-tools swig zlib-devel python-devel kernel-devel kernel-headers librdkafka-devel
 curl -L -o ./bro/bro-$BRO_VERSION.tar.gz -O https://www.bro.org/downloads/bro-$BRO_VERSION.tar.gz
 git clone https://github.com/J-Gras/bro-af_packet-plugin
@@ -114,7 +114,7 @@ tar czvf bro/bro-af_packet-plugin.tar.gz bro-af_packet-plugin
 pushd /etc/yum.repos.d
 curl -O https://copr.fedorainfracloud.org/coprs/jasonish/suricata-stable/repo/epel-7/jasonish-suricata-stable-epel-7.repo
 popd
-yum -y install --downloadonly --downloaddir=./rpm/suricata suricata
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/suricata suricata
 ################################################################################
 # Docker Containers
 ################################################################################

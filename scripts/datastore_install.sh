@@ -96,7 +96,7 @@ if $ENABLE_ELK; then
                 -p $ES_IP:9200:9200 \
                 -p $ES_IP:9300:9300 \
                 -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                -e ELASTIC_PASSWORD="changeme" \
+                -e ELASTIC_PASSWORD="$IPA_ADMIN_PASSWORD" \
                 elasticsearch
 
     # Fixes a memory assignemnt issue I still don't completely understand.
@@ -134,7 +134,7 @@ if $ENABLE_ELK; then
                 -p $ESSEARCH_IP:9200:9200 \
                 -p $ESSEARCH_IP:9300:9300 \
                 -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                -e ELASTIC_PASSWORD="changeme" \
+                -e ELASTIC_PASSWORD="$IPA_ADMIN_PASSWORD" \
                 elasticsearch
 
     # Fixes a memory assignemnt issue I still don't completely understand.
@@ -179,7 +179,7 @@ if $ENABLE_ELK; then
                     -p $TMP_IP:9200:9200 \
                     -p $TMP_IP:9300:9300 \
                     -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                    -e ELASTIC_PASSWORD="changeme" \
+                    -e ELASTIC_PASSWORD="$IPA_ADMIN_PASSWORD" \
                     elasticsearch
 
         # Fixes a memory assignemnt issue I still don't completely understand.
