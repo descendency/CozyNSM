@@ -11,9 +11,6 @@ chkconfig --add disable-transparent-hugepages
 # Routes packets internally for docker
 sysctl -w net.ipv4.conf.all.forwarding=1
 
-# Fixes a FreeIPA issue.
-sysctl -w net.ipv6.conf.all.enable_ipv6=1
-
 # Fixes an ElasticSearch issue in 5.x+
 sysctl -w vm.max_map_count=1073741824
 systemctl restart network
@@ -53,7 +50,7 @@ docker load -q -i ./images/nginx.docker
 ################################################################################
 if $ENABLE_ELK; then
     if $IS_ELK_MASTER_NOTE; then
-    bash scripts/interface.sh $ANALYST_INTERFACE $ES_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+    bash scripts/interface.sh $ANALYST_INTERFACE $ES_IP
     docker run --restart=always -itd --name logstash -h logstash.$DOMAIN \
                 -p $ES_IP:5044:5044 \
                 --network="databridge" \
@@ -127,7 +124,7 @@ if $ENABLE_ELK; then
 # INSTALL: ElasticSearch Search Node                                           #
 ################################################################################
     if $IS_ELK_SEARCH_NOTE; then
-    bash scripts/interface.sh $ANALYST_INTERFACE $ESSEARCH_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+    bash scripts/interface.sh $ANALYST_INTERFACE $ESSEARCH_IP
     docker run --restart=always -itd --name essearch -h essearch.$DOMAIN \
                 --network="databridge" \
                 --ip 172.18.0.$(echo $ESSEARCH_IP | awk -F . '{print $4}') \
@@ -171,7 +168,7 @@ if $ENABLE_ELK; then
     while [ $COUNTER -lt $ES_DATA_NODES ]; do
         TMP_IP=$(echo $ESDATA_IP | cut -d. -f1-3).$(($(echo $ESDATA_IP | cut \
             -d. -f4)+$COUNTER))
-        bash scripts/interface.sh $ANALYST_INTERFACE $TMP_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+        bash scripts/interface.sh $ANALYST_INTERFACE $TMP_IP
         docker run --restart=always -itd --name esdata$COUNTER \
                     -h esdata$COUNTER.$DOMAIN \
                     --network="databridge" \
@@ -218,7 +215,7 @@ if $ENABLE_ELK; then
 # INSTALL: Kibana                                                              #
 ################################################################################
     if $IS_ELK_SEARCH_NOTE; then
-    bash scripts/interface.sh $ANALYST_INTERFACE $KIBANA_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+    bash scripts/interface.sh $ANALYST_INTERFACE $KIBANA_IP
     docker run --restart=always -itd --name kibana -h kibana.$DOMAIN \
                 --network="databridge" \
                 --ip 172.18.0.$(echo $KIBANA_IP | awk -F . '{print $4}') \
@@ -243,7 +240,7 @@ if $ENABLE_SPLUNK; then
 ################################################################################
 # INSTALL: BusyBox for Splunk Enterprise                                       #
 ################################################################################
-    bash scripts/interface.sh $ANALYST_INTERFACE $SPLUNK_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+    bash scripts/interface.sh $ANALYST_INTERFACE $SPLUNK_IP
     docker run --restart=always -itd --name vsplunk -h busybox.$DOMAIN \
                 --network="databridge" \
                 -v /opt/splunk/etc \
@@ -263,12 +260,18 @@ if $ENABLE_SPLUNK; then
                 -p $SPLUNK_IP:9997:9997 \
                 -p $SPLUNK_IP:8088:8088 \
                 -p $SPLUNK_IP:1514:1514 \
-                -e "SPLUNK_START_ARGS=--accept-license" \
+                -e "SPLUNK_START_ARGS=--accept-license --seed-passwd $IPA_ADMIN_PASSWORD" \
                 splunk
 
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
     PROXYPORTS=$PROXYPORTS"-p $SPLUNK_IP:80:80 -p $SPLUNK_IP:443:443 "
+
+    docker exec -it splunk bin/splunk add index bro -auth 'admin:$IPA_ADMIN_PASSWORD'
+    docker exec -it splunk bin/splunk add index suricata -auth 'admin:$IPA_ADMIN_PASSWORD'
+    docker exec -it splunk bin/splunk enable listen 9997 -auth 'admin:$IPA_ADMIN_PASSWORD'
+
+    docker restart splunk
 fi
 
 if $IS_ELK_DATA_NOTE || $ENABLE_SPLUNK; then
@@ -299,13 +302,6 @@ sed -e "s/DOMAIN/$DOMAIN/g" \
     -e "s/CORTEXIP/172.19.0.12/g" \
     -i nginx/nginx.conf
 docker cp nginx/nginx.conf dataproxy:/etc/nginx/nginx.conf
-
 # Start Reverse proxy
 docker restart dataproxy
-fi
-
-if $ENABLE_ELK; then
-# Automate the Kibana Index Choosing
-curl -k -u $IPA_USERNAME:$IPA_ADMIN_PASSWORD -XPUT https://es.$DOMAIN:9200/.kibana/index-pattern/logstash-* -d '{"title" : "logstash-*",  "timeFieldName": "ts"}'
-curl -k -u $IPA_USERNAME:$IPA_ADMIN_PASSWORD -XPUT https://es.$DOMAIN:9200/.kibana/config/4.1.1 -d '{"defaultIndex" : "logstash-*"}'
 fi

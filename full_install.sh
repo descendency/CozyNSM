@@ -1,7 +1,12 @@
-source scripts/install_settings.sh
 ################################################################################
 # DO NOT EDIT THIS SCRIPT! Go to scripts/install_settings.sh                   #
 ################################################################################
+if [ $(cat scripts/install_settings.sh | grep -E "([ \t]+=[ \t]?|[ \t]?=[ \t]+)" | wc -l) -ne 0 ]; then
+     echo "scripts/install_settings.sh contains an invalid configuration line: "$(cat scripts/install_settings.sh | grep -E "([ \t]+=[ \t]?|[ \t]?=[ \t]+)")
+     exit 1
+fi
+source scripts/install_settings.sh
+
 # Ensure the script is being run as root
 if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
@@ -60,7 +65,11 @@ export ESDATA_IP=$IP$ESDATA_IP
 ################################################################################
 
 bash scripts/setup_networking.sh
-bash scripts/rpm_install.sh
+if $LOCAL_REPO; then
+    bash scripts/preinstall_rpms.sh
+elif
+    bash scripts/rpm_install.sh
+fi
 if $IS_APP_SERVER; then
     bash scripts/application_install.sh
 fi

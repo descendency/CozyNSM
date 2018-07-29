@@ -132,17 +132,17 @@ if $ENABLE_SPLUNK; then
 
     docker load -i images/universalforwarder.docker
 
-    #docker run --restart=always -d --name forwarder \
-    #    -e SPLUNK_START_ARGS=--accept-license \
-    #    -e SPLUNK_FORWARD_SERVER=$SPLUNK_IP:9997 \
-    #    -e SPLUNK_USER=root \
-    #    -v /data:/data:ro \
-    #    -v /var/lib/docker/containers:/host/containers:ro \
-    #    -v /var/log:/docker/log:ro \
-    #    -v /var/run/docker.sock:/var/run/docker.sock:ro \
-    #    -v volume_splunkuf_etc:/opt/splunk/etc \
-    #    -v volume_splunkuf_var:/opt/splunk/var \
-    #    universalforwarder
+    docker run --restart=always -d --name forwarder \
+        -e SPLUNK_START_ARGS="--accept-license --seed-passwd $IPA_ADMIN_PASSWORD"\
+        -e SPLUNK_FORWARD_SERVER=$SPLUNK_IP:9997 \
+        -e SPLUNK_USER=root \
+        -v /data:/data:ro \
+        universalforwarder
 
-    # docker copy configuration files
+    docker exec -it forwarder bin/splunk add forward-server $SPLUNK_IP:9997 -auth 'admin:$IPA_ADMIN_PASSWORD'
+    docker exec -it forwarder bin/splunk set deploy-poll $SPLUNK_IP:8089 -auth 'admin:$IPA_ADMIN_PASSWORD'
+    docker exec -it forwarder bin/splunk add monitor /data/bro/current/*.log -index bro -auth 'admin:$IPA_ADMIN_PASSWORD'
+    docker exec -it forwarder bin/splunk add monitor /data/suricata/eve.json -index suricata -auth 'admin:$IPA_ADMIN_PASSWORD'
+
+    docker restart forwarder
 fi

@@ -5,9 +5,6 @@ echo "vm.max_map_count=1073741824" >> /usr/lib/sysctl.d/00-system.conf
 # Routes packets internally for docker
 sysctl -w net.ipv4.conf.all.forwarding=1
 
-# Fixes a FreeIPA issue.
-sysctl -w net.ipv6.conf.all.enable_ipv6=1
-
 # Fixes an ElasticSearch issue in 5.x+
 sysctl -w vm.max_map_count=1073741824
 systemctl restart network
@@ -54,7 +51,7 @@ docker load -q -i ./images/nginx.docker
 ################################################################################
 # INSTALL: FreeIPA                                                             #
 ################################################################################
-bash scripts/interface.sh $ANALYST_INTERFACE $IPA_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+bash scripts/interface.sh $ANALYST_INTERFACE $IPA_IP
 mkdir -p /var/lib/ipa-data
 echo -e "-U" > /var/lib/ipa-data/ipa-server-install-options
 echo -e "-r $DOMAIN" >> /var/lib/ipa-data/ipa-server-install-options
@@ -110,7 +107,7 @@ sysctl vm.drop_caches=3
 # INSTALL: GoGS                                                                #
 ################################################################################
 if $ENABLE_GOGS; then
-    bash scripts/interface.sh $ANALYST_INTERFACE $GOGS_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+    bash scripts/interface.sh $ANALYST_INTERFACE $GOGS_IP
     docker run --restart=always -itd --name gogs -h gogs.$DOMAIN \
                 --ip 172.19.0.$(echo $GOGS_IP | awk -F . '{print $4}') \
                 --network="appbridge" \
@@ -129,7 +126,7 @@ fi
 # INSTALL: MongoDB for Rocket.Chat                                             #
 ################################################################################
 if $ENABLE_CHAT; then
-    bash scripts/interface.sh $ANALYST_INTERFACE $CHAT_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+    bash scripts/interface.sh $ANALYST_INTERFACE $CHAT_IP
     docker run --name mongodb --restart=always -tid -h mongodb.$DOMAIN \
                 --ip 172.19.0.4 \
                 --network="appbridge" \
@@ -166,7 +163,7 @@ if $ENABLE_CHAT; then
     			-e MONGO_URL=mongodb://172.19.0.4/mydb \
     			-e ADMIN_USERNAME=localadmin \
     			-e ADMIN_PASS=$IPA_ADMIN_PASSWORD \
-    			-e ADMIN_EMAIL=cozyadmin@cozy.lan \
+    			-e ADMIN_EMAIL=cozyadmin@$DOMAIN \
     			--link mongodb \
                 rocketchat
 
@@ -178,7 +175,7 @@ fi
 # INSTALL: OwnCloud                                                            #
 ################################################################################
 if $ENABLE_OWNCLOUD; then
-    bash scripts/interface.sh $ANALYST_INTERFACE $OWNCLOUD_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+    bash scripts/interface.sh $ANALYST_INTERFACE $OWNCLOUD_IP
     docker run --restart=always -itd --name owncloud -h owncloud.$DOMAIN \
                 --ip 172.19.0.$(echo $OWNCLOUD_IP | awk -F . '{print $4}') \
                 --network="appbridge" \
@@ -208,7 +205,7 @@ docker run --restart=always -itd --name eshive -h eshive.$DOMAIN \
 ################################################################################
 # INSTALL: TheHive                                                             #
 ################################################################################
-bash scripts/interface.sh $ANALYST_INTERFACE $HIVE_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+bash scripts/interface.sh $ANALYST_INTERFACE $HIVE_IP
 docker run --restart=always -itd --name thehive -h hive.$DOMAIN \
     --network="appbridge" \
     --ip 172.19.0.110 \
@@ -220,7 +217,7 @@ PROXYPORTS=$PROXYPORTS"-p $HIVE_IP:80:80 -p $HIVE_IP:443:443 "
 ################################################################################
 # INSTALL: Cortex                                                              #
 ################################################################################
-bash scripts/interface.sh $ANALYST_INTERFACE $CORTEX_IP $(($(ls /etc/sysconfig/network-scripts/ifcfg-$ANALYST_INTERFACE:* | wc -l) + 1))
+bash scripts/interface.sh $ANALYST_INTERFACE $CORTEX_IP
 docker run --restart=always -itd --name cortex -h cortex.$DOMAIN \
     --network="appbridge" \
     --ip 172.19.0.112 \
@@ -239,7 +236,7 @@ if $ENABLE_GOGS; then
 # GoGS
 sed -e "s/GOGSDOMAIN/gogs.$DOMAIN/g" -i gogs/app.ini
 docker cp gogs/app.ini gogs:/data/gogs/conf/app.ini
-sqlite3 gogs/gogs.db "UPDATE user SET lower_name=\"localadmin\", name=\"localadmin\", email=\"$IPA_USERNAME@$DOMAIN\", avatar_email=\"$IPA_USERNAME@$DOMAIN\" WHERE id=1;"
+sqlite3 gogs/gogs.db "UPDATE user SET lower_name=\"localadmin\", name=\"localadmin\", email=\"dontemailme@$DOMAIN\", avatar_email=\"dontemailme@$DOMAIN\" WHERE id=1;"
 sqlite3 gogs/gogs.db "$(sed -e "s/IPA_IP/$IPA_IP/g" -e "s/DOMAIN/dc=${DOMAIN//\./,dc=}/g" -e "s/ADMIN_PASSWORD/$IPA_ADMIN_PASSWORD/g" gogs/test.txt)"
 docker cp gogs/gogs.db gogs:/app/gogs/data/gogs.db
 docker exec -itu root gogs chmod a+w /app/gogs/data/gogs.db

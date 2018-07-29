@@ -44,85 +44,27 @@ rm -rf /root/rpmbuild/SOURCES/*
 ################################################################################
 sed -e "s/repo_gpgcheck=1/repo_gpgcheck=0/g" -e "s/localpkg_gpgcheck=1/localpkg_gpgcheck=0/g" -i /etc/yum.conf
 yum clean all
-# Updates
-yum -y -q -e 0 update --downloadonly --downloaddir=./rpm/updates
-# These break the network connection for some reason.
-#rm -rf ./rpm/updates/NetworkManager*
-
-# Extras
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/extras ntp git wget rng-tools
 yum -y -q -e 0 install ntp git wget rng-tools
 systemctl restart ntpd
 curl -L -o ./rpm/extras/epel-release-7-11.noarch.rpm -O http://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/e/epel-release-7-11.noarch.rpm
 rpm --import http://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
 yum -y -q -e 0 install ./rpm/extras/epel-release-7-11.noarch.rpm
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/extras rpm-build elfutils-libelf rpm rpm-libs rpm-python
 yum -y -q -e 0 install rpm-build elfutils-libelf rpm rpm-libs rpm-python
 
-# Stenographer
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/stenographer libaio-devel leveldb-devel snappy-devel gcc-c++ make libpcap-devel libseccomp-devel git golang libaio leveldb snappy libpcap libseccomp tcpdump curl rpmlib jq systemd mock rpm-build
-#yum -y install libaio-devel leveldb-devel snappy-devel gcc-c++ make libpcap-devel libseccomp-devel git golang libaio leveldb snappy libpcap libseccomp tcpdump curl rpmlib jq systemd mock rpm-build
-#TMPDIR=$(mktemp -d)
-#pushd $TMPDIR
-#git clone https://github.com/google/stenographer
-#pushd stenographer
-#chmod +x rpmbuild-steno-centos
-#./rpmbuild-steno-centos
-#popd
-#popd
-#rm -rf $TMPDIR
-#mv /var/lib/mock/epel-7-x86_64/result/stenographer*.x86_64.rpm rpm/stenographer
-
 # Docker
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/docker yum-utils device-mapper-persistent-data lvm2
 yum -y -q -e 0 install yum-utils device-mapper-persistent-data lvm2
 yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/docker docker-ce
 yum -y -q -e 0 install docker-ce
 # Start Docker Service
 systemctl start docker
 
-# IPA-client
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/ipa-client ipa-client
-
 # FileBeat
 curl -L -o ./rpm/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/filebeat ./rpm/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm
 
 # Bro
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/bro bind-devel bison cmake flex GeoIP-devel gcc-c++ gperftools-devel jemalloc-devel libpcap-devel openssl-devel python2-devel python-tools swig zlib-devel python-devel kernel-devel kernel-headers librdkafka-devel
-#yum -y install bind-devel bison cmake flex GeoIP-devel gcc-c++ gperftools-devel jemalloc-devel libpcap-devel openssl-devel python2-devel python-tools swig zlib-devel python-devel kernel-devel kernel-headers librdkafka-devel
 curl -L -o ./bro/bro-$BRO_VERSION.tar.gz -O https://www.bro.org/downloads/bro-$BRO_VERSION.tar.gz
 git clone https://github.com/J-Gras/bro-af_packet-plugin
 tar czvf bro/bro-af_packet-plugin.tar.gz bro-af_packet-plugin
-#mv ./tar/bro/bro-$BRO_VERSION.tar.gz  /root/rpmbuild/SOURCES/
-#git clone https://github.com/dcode/rpmbuild.git
-#sed -i -e "s@--strip-components=1@@g" -e "s@%{_libdir}/broctl/*\.p*@@" -e "s@%files -n broctl@%files -n broctl"$'\\\n'"%exclude %{_libdir}/broctl/broccoli*.p*"$'\\\n'"%exclude %{_libdir}/broctl/_broccoli_intern.so@g" -e "s/APACHE_KAFKA/BRO_KAFKA/g" ./rpmbuild/SPECS/bro.spec
-#sed -i -e '/%dir %{_libdir}\/bro\/plugins\/BRO_KAFKA\/scripts\/Apache/d' -e '/%dir %{_libdir}\/bro\/plugins\/BRO_KAFKA\/scripts\/Apache\/Kafka/d' -e '/%{_libdir}\/bro\/plugins\/BRO_KAFKA\/scripts\/Apache\/Kafka\/\*.bro/d' ./rpmbuild/SPECS/bro.spec
-#mv ./rpmbuild/SPECS/bro.spec /root/rpmbuild/SPECS/bro.spec
-#pushd ./bro-af_packet-plugin
-#tar czvf ../bro-plugin-afpacket-$BRO_VERSION.tar.gz *
-#popd
-#mv ./bro-plugin-afpacket-$BRO_VERSION.tar.gz  /root/rpmbuild/SOURCES/
-#git clone https://github.com/JonZeolla/metron-bro-plugin-kafka
-#pushd metron-bro-plugin-kafka
-#tar czvf ../bro-plugin-kafka-$BRO_VERSION.tar.gz *
-#popd
-#mv ./bro-plugin-kafka-$BRO_VERSION.tar.gz /root/rpmbuild/SOURCES/
-#pushd /root/rpmbuild/SOURCES/
-#cat /root/rpmbuild/SPECS/bro.spec | grep ^Patch - | awk '{print $2}' | xargs -n 1 curl -L -O
-#popd
-#sed -i -e "s/bro-2.5/bro-$BRO_VERSION/g" /root/rpmbuild/SOURCES/bro-findkernelheaders-hack.patch
-#rpmbuild -ba /root/rpmbuild/SPECS/bro.spec
-#mv /root/rpmbuild/RPMS/x86_64/*.rpm ./rpm/bro
-#rm -f ./rpm/bro/bro-plugin-kafka-$BRO_VERSION-1.el7.centos.x86_64.rpm
-#yum -y install --downloadonly --downloaddir=./rpm/bro ./rpm/bro/*.rpm
-
-# Suricata
-pushd /etc/yum.repos.d
-curl -O https://copr.fedorainfracloud.org/coprs/jasonish/suricata-stable/repo/epel-7/jasonish-suricata-stable-epel-7.repo
-popd
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/suricata suricata
 ################################################################################
 # Docker Containers
 ################################################################################
