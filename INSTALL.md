@@ -94,7 +94,7 @@ Once CentOS has finished installing, log in as root.
     * Enable the install script to run ("chmod +x install.sh").
 1. The script requires some configuration. Edit the values in
 scripts/install_settings.sh to meet your network requirements.
-1. Run ```bash full_install.sh```.
+1. Run ```bash install.sh```.
 1. This script will prompt the installer for a few things.
 Answer them like this:
     * The collection interface is the interface plugged into the tap.

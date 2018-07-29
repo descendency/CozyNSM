@@ -3,7 +3,7 @@
 # This script creates virtual interfaces.
 #
 # Usage:
-# ./interface.sh <NIC> <IP of virtual interface> <virtual number>
+# ./interface.sh <NIC> <IP of virtual interface>
 
 DIR=/etc/sysconfig/network-scripts
 GATEWAY=$(echo $2 | awk -F. '{print $1"."$2"."$3".1"}')
