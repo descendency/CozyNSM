@@ -1,11 +1,13 @@
 ################################################################################
 # Choose Versions (everything else will be 'latest' builds)
 ################################################################################
-ELASTIC_VERSION=6.3.0
-BRO_VERSION=2.5.4
-SPLUNK_VERSION=7.1.0
-
-read -p "Domain? " DOMAIN
+ELASTIC_VERSION=6.5.4
+BRO_VERSION=2.6.1
+SPLUNK_VERSION=7.2.3
+CORTEX_VERSION=2.1.3
+THEHIVE_VERSION=3.2.1
+#read -p "Domain? " DOMAIN
+if (($(hostname | grep -o "\." | wc -l) > 1)); then DOMAIN=$(echo `hostname` | sed 's/^[^\.]*\.//g'); else read -p "Domain? " DOMAIN; fi
 echo -e "\n!!You must enter the exact same admin password during install!!"
 read -p "Admin Password? " PASSWORD
 
@@ -50,8 +52,8 @@ yum -y -q -e 0 update --downloadonly --downloaddir=./rpm/updates
 #rm -rf ./rpm/updates/NetworkManager*
 
 # Extras
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/extras ntp git wget rng-tools
-yum -y -q -e 0 install ntp git wget rng-tools
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/extras ntp git wget rng-tools createrepo vim-common dos2unix
+yum -y -q -e 0 install ntp git wget rng-tools createrepo vim-common dos2unix
 systemctl restart ntpd
 curl -L -o ./rpm/extras/epel-release-7-11.noarch.rpm -O http://dl.fedoraproject.org/pub/epel/7/x86_64/Packages/e/epel-release-7-11.noarch.rpm
 rpm --import http://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-7
@@ -83,7 +85,7 @@ yum -y -q -e 0 install docker-ce
 systemctl start docker
 
 # IPA-client
-yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/ipa-client ipa-client
+yum -y -q -e 0 install --downloadonly --downloaddir=./rpm/ipa-client ipa-client nss-pam-ldapd nscd
 
 # FileBeat
 curl -L -o ./rpm/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-$ELASTIC_VERSION-x86_64.rpm
@@ -193,16 +195,16 @@ docker pull owncloud
 docker save -o ./images/owncloud.docker owncloud
 
 # TheHive
-docker pull certbdf/thehive
-docker tag certbdf/thehive thehive
+docker pull thehiveproject/thehive:$THEHIVE_VERSION
+docker tag thehiveproject/thehive:$THEHIVE_VERSION thehive
 docker save -o ./images/thehive.docker thehive
-docker rmi certbdf/thehive
+docker rmi thehiveproject/thehive:$THEHIVE_VERSION
 
 # Cortex for TheHive
-docker pull certbdf/cortex
-docker tag certbdf/cortex cortex
+docker pull thehiveproject/cortex:$CORTEX_VERSION
+docker tag thehiveproject/cortex:$CORTEX_VERSION cortex
 docker save -o ./images/cortex.docker cortex
-docker rmi certbdf/cortex
+docker rmi thehiveproject/cortex:$CORTEX_VERSION
 
 # Old version of ElasticSearch for TheHive
 docker pull docker.elastic.co/elasticsearch/elasticsearch:5.5.3

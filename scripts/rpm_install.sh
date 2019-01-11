@@ -25,7 +25,6 @@ fi
 if ! (rpm -qa | grep stenographer 2>&1 > /dev/null); then
     yum -y -q -e 0 localinstall rpm/stenographer/*.rpm
 fi
-yum -y -q -e 0 localinstall rpm/splunk/*.rpm
 mv /tmp/backup/* /etc/yum.repos.d
 
 # Re-enable the local GPG requirement (DISA STIG)

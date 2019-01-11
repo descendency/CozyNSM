@@ -19,6 +19,9 @@ export IS_APP_SERVER="true"       # Is the server an application server (Gogs, C
 # DNS is enabled so you can use the DNS names to access these services.
 
 # Warning: THESE MUST BE ".XX"! IT WILL BREAK WITHOUT IT!
+export SENSOR_IP=".3"
+export DATA_IP=".4"
+export APP_IP=".99"
 export IPA_IP=".5"                       # FreeIPA IP
 export ES_IP=".6"                        # ES Master Node IP
 export ESSEARCH_IP=".7"                  # ES Search Head - Attached to Kibana

@@ -51,6 +51,8 @@ docker load -q -i ./images/nginx.docker
 ################################################################################
 # INSTALL: FreeIPA                                                             #
 ################################################################################
+firewall-cmd --permanent --add-service={ntp,http,https,ldap,ldaps,kerberos,kpasswd,dns}
+firewall-cmd --reload
 bash scripts/interface.sh $ANALYST_INTERFACE $IPA_IP
 mkdir -p /var/lib/ipa-data
 echo -e "-U" > /var/lib/ipa-data/ipa-server-install-options
@@ -364,8 +366,8 @@ if $ENABLE_SPLUNK; then
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN splunk --a-rec=$SPLUNK_IP
 fi
 
-docker exec -iu root ipa ipa dnsrecord-del $DOMAIN ipa --a-rec 172.18.0.253
-docker exec -iu root ipa ipa dnsrecord-del $DOMAIN ipa-ca --a-rec 172.18.0.253
+docker exec -iu root ipa ipa dnsrecord-del $DOMAIN ipa --a-rec 172.19.0.253
+docker exec -iu root ipa ipa dnsrecord-del $DOMAIN ipa-ca --a-rec 172.19.0.253
 
 ################################################################################
 # CONFIGURE: First User/Admin                                                  #

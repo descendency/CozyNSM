@@ -45,9 +45,12 @@ export IPA_ADMIN_PASSWORD
 # Grab the IP from the analyst interface. This prevents users from incorrectly
 # inputting the first 3 octets.
 # Format Example: 192.168.1
-IP=$(ip addr | grep -e 'inet ' | grep -e ".*$ANALYST_INTERFACE$" | awk \
+export IP=$(ip addr | grep -e 'inet ' | grep -e ".*$ANALYST_INTERFACE$" | awk \
     '{print $2}' | cut -f1 -d '/' | awk -F . '{print $1"."$2"."$3}')
 # The IP schema of the server and its applications.
+export SENSOR_IP=$IP$SENSOR_IP
+export DATA_IP=$IP$DATA_IP
+export APP_IP=$IP$APP_IP
 export IPA_IP=$IP$IPA_IP
 export ES_IP=$IP$ES_IP
 export ESSEARCH_IP=$IP$ESSEARCH_IP
@@ -67,7 +70,7 @@ export ESDATA_IP=$IP$ESDATA_IP
 bash scripts/setup_networking.sh
 if $LOCAL_REPO; then
     bash scripts/preinstall_rpms.sh
-elif
+else
     bash scripts/rpm_install.sh
 fi
 if $IS_APP_SERVER; then

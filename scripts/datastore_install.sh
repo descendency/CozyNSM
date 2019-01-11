@@ -49,6 +49,7 @@ docker load -q -i ./images/nginx.docker
 # INSTALL: Logstash                                                            #
 ################################################################################
 if $ENABLE_ELK; then
+firewall-cmd --permanent --add-port=9200/tcp
     if $IS_ELK_MASTER_NOTE; then
     bash scripts/interface.sh $ANALYST_INTERFACE $ES_IP
     docker run --restart=always -itd --name logstash -h logstash.$DOMAIN \
@@ -119,6 +120,25 @@ if $ENABLE_ELK; then
         es:/usr/share/elasticsearch/config/x-pack/CozyMaster.crt
     docker cp certs/ca/ca.crt \
         es:/usr/share/elasticsearch/config/x-pack/ca.crt
+
+    sleep 60
+
+    while [ "$(curl -I -s -k https://$IPA_USERNAME:$IPA_ADMIN_PASSWORD@es.test.lan:9200 | head -1 | awk '{print $2}')" -ne '200' ]; do
+        sleep 10;
+    done
+
+    curl -XPOST -k https://$IPA_USERNAME:$IPA_ADMIN_PASSWORD@es.test.lan:9200/_xpack/license/start_trial?acknowledge=true
+    docker exec -it es /usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b -u "https://es.test.lan:9200" > es.output
+    dos2unix es.output
+    sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i kibana/kibana.yml
+    sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i logstash/logstash.conf
+    sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i logstash/logstash.yml
+    docker cp logstash/logstash.conf \
+        logstash:/usr/share/logstash/pipeline/logstash.conf
+    docker cp logstash/logstash.yml \
+        logstash:/usr/share/logstash/config/logstash.yml
+    docker restart logstash
+    #rm -f es.output
     fi
 ################################################################################
 # INSTALL: ElasticSearch Search Node                                           #
@@ -252,26 +272,29 @@ if $ENABLE_SPLUNK; then
 ################################################################################
 # INSTALL: Splunk Enterprise                                                   #
 ################################################################################
+#                -v /data/bro/current:/data/bro/current:ro \
     docker run --restart=always -itd --name splunk -h splunk.$DOMAIN \
                 --volumes-from=vsplunk \
-                -v /data/bro/current:/data/bro/current:ro \
                 --ip 172.18.0.$(echo $SPLUNK_IP | awk -F . '{print $4}') \
                 --network="databridge" \
                 -p $SPLUNK_IP:9997:9997 \
                 -p $SPLUNK_IP:8088:8088 \
+                -p $SPLUNK_IP:8089:8089 \
                 -p $SPLUNK_IP:1514:1514 \
-                -e "SPLUNK_START_ARGS=--accept-license --seed-passwd $IPA_ADMIN_PASSWORD" \
+                -e "SPLUNK_START_ARGS=--accept-license" \
+                -e "SPLUNK_PASSWORD=$IPA_ADMIN_PASSWORD" \
                 splunk
 
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
     PROXYPORTS=$PROXYPORTS"-p $SPLUNK_IP:80:80 -p $SPLUNK_IP:443:443 "
-
-    docker exec -it splunk bin/splunk add index bro -auth 'admin:$IPA_ADMIN_PASSWORD'
-    docker exec -it splunk bin/splunk add index suricata -auth 'admin:$IPA_ADMIN_PASSWORD'
-    docker exec -it splunk bin/splunk enable listen 9997 -auth 'admin:$IPA_ADMIN_PASSWORD'
-
     docker restart splunk
+
+    sleep 60
+
+    docker exec -itu splunk splunk /opt/splunk/bin/splunk add index bro -auth "admin:$IPA_ADMIN_PASSWORD"
+    docker exec -itu splunk splunk /opt/splunk/bin/splunk add index suricata -auth "admin:$IPA_ADMIN_PASSWORD"
+    docker exec -itu splunk splunk /opt/splunk/bin/splunk enable listen 9997 -auth "admin:$IPA_ADMIN_PASSWORD"
 fi
 
 if $IS_ELK_DATA_NOTE || $ENABLE_SPLUNK; then

@@ -167,7 +167,7 @@ event bro_init() &priority=-10
 {
         Log::disable_stream(CaptureLoss::LOG);
         Log::disable_stream(Cluster::LOG);
-        Log::disable_stream(Communication::LOG);
+        Log::disable_stream(Broker::LOG);
         Log::disable_stream(LoadedScripts::LOG);
         Log::disable_stream(PacketFilter::LOG);
         Log::disable_stream(Stats::LOG);

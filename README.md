@@ -1,7 +1,7 @@
 ### Introduction
 CozyNSM was designed and created to be a lightweight Security Onion          
 replacement to be deployed in an SELinux Environment. This was tested with   
-CentOS 7.4 Minimal with DISA Draft STIGs enabled, in an offline environment.                           
+CentOS 7.6 Minimal with DISA Draft STIGs enabled, in an offline environment.                           
 
 This version of the CozyStack was designed for one server.                   
 Minimum Recommended Specs (1 gbps):                                          
