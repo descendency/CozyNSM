@@ -71,3 +71,6 @@ export ES_DATA_NODES="6"
 export IS_ELK_DATA_NOTE="true"        # Install a Data Node?
 export IS_ELK_SEARCH_NOTE="true"      # Install Kibana and a Search Node?
 export IS_ELK_MASTER_NOTE="true"      # Install 'the' Master Node?
+# Coinfugre if you are using the paid version of Elastic products or not
+export ENABLE_XPACK="true"            # Set to false if you are not using the
+                                      # paid version of Elastic's XPACK.

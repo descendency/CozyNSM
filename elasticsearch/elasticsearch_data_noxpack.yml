@@ -1,0 +1,7 @@
+cluster.name: CozyStack
+node.name: "CozyDataNUMBER"
+node.master: false
+node.data: true
+network.host: 0.0.0.0
+network.publish_host: ES_IP
+discovery.zen.ping.unicast.hosts: ["es.LOCALDOMAIN"]

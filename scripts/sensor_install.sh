@@ -125,11 +125,15 @@ fi
 # INSTALL: FileBeat                                                            #
 ################################################################################
 if $ENABLE_ELK; then
-    sed -i -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" filebeat/filebeat.yml
-    cp filebeat/filebeat.yml /etc/filebeat/filebeat.yml
-    cp certs/FileBeat/FileBeat.crt /etc/filebeat/FileBeat.crt
-    cp certs/ca/ca.crt /etc/filebeat/ca.crt
-    cp certs/FileBeat/FileBeat.key /etc/filebeat/FileBeat.key
+    if $ENABLE_XPACK; then
+        sed -i -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" filebeat/filebeat.yml
+        cp filebeat/filebeat.yml /etc/filebeat/filebeat.yml
+        cp certs/FileBeat/FileBeat.crt /etc/filebeat/FileBeat.crt
+        cp certs/ca/ca.crt /etc/filebeat/ca.crt
+        cp certs/FileBeat/FileBeat.key /etc/filebeat/FileBeat.key
+    else
+        cp filebeat/filebeat_noxpack.yml /etc/filebeat/filebeat.yml
+    fi
     systemctl enable filebeat
     systemctl restart filebeat
 fi
