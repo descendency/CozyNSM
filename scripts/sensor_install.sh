@@ -9,56 +9,41 @@ mkdir -p /data/suricata
 if $ENABLE_BRO; then
     ip link set dev $COLLECTION_INTERFACE promisc on
     ifup $COLLECTION_INTERFACE
-    BRO_VERSION=$(ls bro/*.tar.gz | cut -d- -f2 | grep -o "[0-9]\(\.[0-9]\)\{1,\}")
-    pushd bro
-    tar xzvf bro-$BRO_VERSION.tar.gz
-    tar xzvf bro-af_packet-plugin.tar.gz
-    popd
-    pushd bro/bro-$BRO_VERSION
-    ./configure
-    make -s -j$(ps -e -o psr= | sort | uniq | wc -l)
-    make install -s -j$(ps -e -o psr= | sort | uniq | wc -l)
-    popd
-    pushd bro/bro-af_packet-plugin
-    ./configure --bro-dist=../bro-$BRO_VERSION/ --with-kernel=/usr/include
-    make -s -j$(ps -e -o psr= | sort | uniq | wc -l)
-    make install -s -j$(ps -e -o psr= | sort | uniq | wc -l)
-    popd
-    BRO_DIR=/usr/local
+    BRO_DIR=/usr/share
     # Configure Bro to run in clustered mode.
-    cp bro/etc/node.cfg $BRO_DIR/bro/etc/node.cfg
+    cp bro/etc/node.cfg /etc/bro/node.cfg
     # Configure the number of nodes for Bro.
-    echo lb_method=custom >> $BRO_DIR/bro/etc/node.cfg
-    echo lb_procs=$BRO_WORKERS >> $BRO_DIR/bro/etc/node.cfg
+    echo lb_method=custom >> /etc/bro/node.cfg
+    echo lb_procs=$BRO_WORKERS >> /etc/bro/node.cfg
     CPUS=""
     COUNTER=0
-    while [ $COUNTER -le $BRO_WORKERS ]; do
+    while [ $COUNTER -lt $BRO_WORKERS ]; do
         let COUNTER=COUNTER+1
-        if [ $COUNTER -ne $[ $BRO_WORKERS + 1 ] ]; then
+        if [ $COUNTER -ne $BRO_WORKERS ]; then
             CPUS=$CPUS$COUNTER,
         else
             CPUS=$CPUS$COUNTER
         fi
     done
-    echo pin_cpus=$CPUS >> $BRO_DIR/bro/etc/node.cfg
-    echo af_packet_fanout_id=23 >> $BRO_DIR/bro/etc/node.cfg
-    echo af_packet_fanout_mode=AF_Packet::FANOUT_HASH >> $BRO_DIR/bro/etc/node.cfg
-    echo af_packet_buffer_size=128*1024*1024 >> $BRO_DIR/bro/etc/node.cfg
+    echo pin_cpus=$CPUS >> /etc/bro/node.cfg
+    echo af_packet_fanout_id=23 >> /etc/bro/node.cfg
+    echo af_packet_fanout_mode=AF_Packet::FANOUT_HASH >> /etc/bro/node.cfg
+    echo af_packet_buffer_size=128*1024*1024 >> /etc/bro/node.cfg
 
     # Configure the interface to listen on.
-    sed -e "s/INTERFACE/$COLLECTION_INTERFACE/g" -i $BRO_DIR/bro/etc/node.cfg
+    sed -e "s/INTERFACE/$COLLECTION_INTERFACE/g" -i /etc/bro/node.cfg
     # Configure the BroCTL to have a temporary in-place sensor setup.
-    cp bro/etc/broctl.cfg $BRO_DIR/bro/etc/broctl.cfg
+    cp bro/etc/broctl.cfg /etc/bro/broctl.cfg
     # Disable certain logs and output in JSON.
-    cp bro/etc/local.bro $BRO_DIR/bro/share/bro/site/local.bro
+    cp bro/etc/local.bro $BRO_DIR/bro/site/local.bro
 ################################################################################
 # DEPLOY: Bro NSM                                                              #
 ################################################################################
-    ln -s $BRO_DIR/bro/bin/bro /usr/bin/bro
-    ln -s $BRO_DIR/bro/bin/broctl /usr/bin/broctl
-    $BRO_DIR/bro/bin/broctl install
-    $BRO_DIR/bro/bin/broctl deploy
-    $BRO_DIR/bro/bin/broctl stop
+    #ln -s $BRO_DIR/bro/bin/bro /usr/bin/bro
+    #ln -s $BRO_DIR/bro/bin/broctl /usr/bin/broctl
+    broctl install
+    broctl deploy
+    broctl stop
     cp bro/etc/bro.service /etc/systemd/system
     # Create CozyStack installed event.
     echo "{\"ts\":\"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\", \"source\":\"Install Script\", \"message\": \"CozyStack installed. This is needed for ELK to initialize correctly.\"}" > /data/bro/current/cozy.log
@@ -154,9 +139,9 @@ if $ENABLE_SPLUNK; then
         --ip 172.20.0.100 \
         --ip6="2001:3200:3202::1337" \
         --network="sensorbridge" \
-        -p $IP.3:8088:8088 \
-        -p $IP.3:8089:8089 \
-        -p $IP.3:9997:9997 \
+        -p $SENSOR_IP:8088:8088 \
+        -p $SENSOR_IP:8089:8089 \
+        -p $SENSOR_IP:9997:9997 \
         -v /data:/data:ro \
         universalforwarder
 

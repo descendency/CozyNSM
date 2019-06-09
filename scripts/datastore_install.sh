@@ -131,12 +131,12 @@ firewall-cmd --permanent --add-port=9200/tcp
 
         sleep 60
 
-        while [ "$(curl -I -s -k https://$IPA_USERNAME:$IPA_ADMIN_PASSWORD@es.test.lan:9200 | head -1 | awk '{print $2}')" -ne '200' ]; do
+        while [ "$(curl -I -s -k https://$IPA_USERNAME:$IPA_ADMIN_PASSWORD@es.$DOMAIN:9200 | head -1 | awk '{print $2}')" -ne '200' ]; do
             sleep 10;
         done
 
-        curl -XPOST -k https://$IPA_USERNAME:$IPA_ADMIN_PASSWORD@es.test.lan:9200/_xpack/license/start_trial?acknowledge=true
-        docker exec -it es /usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b -u "https://es.test.lan:9200" > es.output
+        curl -XPOST -k https://$IPA_USERNAME:$IPA_ADMIN_PASSWORD@es.$DOMAIN:9200/_xpack/license/start_trial?acknowledge=true
+        docker exec -it es /usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b -u "https://es.$DOMAIN:9200" > es.output
         dos2unix es.output
         sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i kibana/kibana.yml
         sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i logstash/logstash.conf

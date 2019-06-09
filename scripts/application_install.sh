@@ -19,8 +19,6 @@ fi
 ################################################################################
 # INSTALL: Docker                                                              #
 ################################################################################
-systemctl enable docker
-systemctl start docker
 systemctl enable rngd
 systemctl start rngd
 
@@ -53,6 +51,7 @@ docker load -q -i ./images/nginx.docker
 ################################################################################
 firewall-cmd --permanent --add-service={ntp,http,https,ldap,ldaps,kerberos,kpasswd,dns}
 firewall-cmd --reload
+setsebool -P container_manage_cgroup 1
 bash scripts/interface.sh $ANALYST_INTERFACE $IPA_IP
 mkdir -p /var/lib/ipa-data
 echo -e "-U" > /var/lib/ipa-data/ipa-server-install-options
@@ -63,9 +62,9 @@ echo -e "-a $IPA_ADMIN_PASSWORD" >> /var/lib/ipa-data/ipa-server-install-options
 echo -e "--mkhomedir" >> /var/lib/ipa-data/ipa-server-install-options
 echo -e "--setup-dns" >> /var/lib/ipa-data/ipa-server-install-options
 echo -e "--no-forwarders" >> /var/lib/ipa-data/ipa-server-install-options
-echo -e "--no-reverse" >> /var/lib/ipa-data/ipa-server-install-options
+#echo -e "--no-reverse" >> /var/lib/ipa-data/ipa-server-install-options
 
-docker run --name ipa --restart=always -tid -h ipa.$DOMAIN --privileged \
+docker run --name ipa --restart=always -tid -h ipa.$DOMAIN \
             -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
             -v /dev/urandom:/dev/random:ro \
             --network="appbridge" \
@@ -132,16 +131,19 @@ if $ENABLE_CHAT; then
     docker run --name mongodb --restart=always -tid -h mongodb.$DOMAIN \
                 --ip 172.19.0.4 \
                 --network="appbridge" \
-                mongo
+                mongo mongod --replSet "rs01"
 
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
+    sleep 120
+    docker exec -itu root mongodb mongo --eval "rs.initiate()"
 ################################################################################
 # INSTALL: Rocket.Chat                                                         #
 ################################################################################
     docker run --name chat --restart=always -tid -h chat.$DOMAIN \
                 --ip 172.19.0.$(echo $CHAT_IP | awk -F . '{print $4}') \
                 --network="appbridge" \
+                -e MONGO_OPLOG_URL=mongodb://172.19.0.4:27017/local?replSet=rs01 \
     			-e OVERWRITE_SETTING_LDAP_Authentication="True" \
     			-e OVERWRITE_SETTING_LDAP_Login_Fallback="True" \
     			-e OVERWRITE_SETTING_LDAP_Host="$IPA_IP" \
@@ -163,6 +165,7 @@ if $ENABLE_CHAT; then
     			-e OVERWRITE_SETTING_LDAP_Import_Users="True" \
     			-e ROOT_URL=http://$CHAT_IP \
     			-e MONGO_URL=mongodb://172.19.0.4/mydb \
+                -e MONGO_OPLOG_URL=mongodb://172.19.0.4:27017/local?replicaSet=rs01 \
     			-e ADMIN_USERNAME=localadmin \
     			-e ADMIN_PASS=$IPA_ADMIN_PASSWORD \
     			-e ADMIN_EMAIL=cozyadmin@$DOMAIN \
@@ -292,10 +295,6 @@ if $ENABLE_HIVE; then
 fi
 
 ################################################################################
-# INSTALL: DokuWiki                                                            #
-################################################################################
-#
-################################################################################
 # INSTALL: NGINX Reverse Proxy                                                 #
 ################################################################################
 # Create the reverse proxy
@@ -337,9 +336,9 @@ docker exec -iu root ipa ipa dnsrecord-add $DOMAIN ipa --a-rec=$IPA_IP
 docker exec -iu root ipa ipa dnsrecord-add $DOMAIN ipa-ca --a-rec=$IPA_IP
 
 if $ENABLE_ELK; then
-    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN elasticsearch --a-rec=192.168.1.$(echo $ES_IP | awk -F . '{print $4}')
-    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN es --a-rec=192.168.1.$(echo $ES_IP | awk -F . '{print $4}')
-    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN essearch --a-rec=192.168.1.$(echo $ESSEARCH_IP | awk -F . '{print $4}')
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN elasticsearch --a-rec=$ES_IP
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN es --a-rec=$ES_IP
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN essearch --a-rec=$ESSEARCH_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN logstash --a-rec=$ES_IP
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN kibana --a-rec=$KIBANA_IP
 fi
@@ -355,6 +354,7 @@ fi
 
 if $ENABLE_CHAT; then
     docker exec -iu root ipa ipa dnsrecord-add $DOMAIN chat --a-rec=$CHAT_IP
+    docker exec -iu root ipa ipa dnsrecord-add $DOMAIN mongodb --a-rec=172.19.0.4
 fi
 
 if $ENABLE_HIVE; then

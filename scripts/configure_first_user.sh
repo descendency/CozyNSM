@@ -23,8 +23,12 @@ setenforce Enforcing
 chown root:root /etc/sssd/sssd.conf
 chmod 600 /etc/sssd/sssd.conf
 sed -i -e 's/services = sudo, pam, autofs, ssh/services = sudo, pam, autofs, ssh, nss/' /etc/sssd/sssd.conf
-systemctl restart sssd
 authconfig --enableldap --enableldapauth --ldapserver=ldap://ipa.$DOMAIN:389 --ldapbasedn="cn=users,cn=accounts,dc=${DOMAIN//\./,dc=}" --update
+sed -i -e "s/REALM_PLACEHOLDER/${DOMAIN^^}/" -e "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" -e "s/HOSTNAME_PLACEHOLDER/$(hostname)/" -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" sssd/sssd.conf
+systemctl restart sssd
+cat sssd/sssd.conf > /etc/sssd/sssd.conf
+chown root:root /etc/sssd/sssd.conf
+chmod 600 /etc/sssd/sssd.conf
 systemctl restart nslcd
 systemctl enable nslcd
 
