@@ -79,8 +79,10 @@ firewall-cmd --permanent --add-port=9200/tcp
         openssl x509 -inform PEM -in certs/ca/ca.crt > certs/ca/ca.pem
         openssl pkcs8 -in certs/Logstash/Logstash.key -passin pass:$IPA_ADMIN_PASSWORD -topk8 -nocrypt -out certs/Logstash/Logstash.p8
 
-        docker cp certs/ca/ca.pem \
-            logstash:/usr/share/logstash/config/ca.pem
+        docker cp certs/ca/ca.crt \
+            logstash:/usr/share/logstash/config/ca.crt
+        docker cp certs/ca/ca.crt \
+            logstash:/usr/share/logstash/config/ca.crt
         docker cp certs/Logstash/Logstash.crt \
             logstash:/usr/share/logstash/config/Logstash.crt
         docker cp certs/Logstash/Logstash.p8 \
@@ -95,110 +97,22 @@ firewall-cmd --permanent --add-port=9200/tcp
 ################################################################################
 # INSTALL: ElasticSearch Master Node                                           #
 ################################################################################
-    docker run --restart=always -itd --name es -h es.$DOMAIN \
-                --network="databridge" \
-                --ip 172.18.0.$(echo $ES_IP | awk -F . '{print $4}') \
-                -p $ES_IP:9200:9200 \
-                -p $ES_IP:9300:9300 \
-                -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                -e ELASTIC_PASSWORD="$IPA_ADMIN_PASSWORD" \
-                elasticsearch
-
-    # Fixes a memory assignemnt issue I still don't completely understand.
-    sysctl vm.drop_caches=3
-
-    if $ENABLE_XPACK; then
-        docker exec -itu root es mkdir -p /usr/share/elasticsearch/config/x-pack
-        docker exec -itu root es chown elasticsearch:root /usr/share/elasticsearch/config/x-pack
-        sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" \
-                    -e "s/IPAPASS/$IPA_ADMIN_PASSWORD/g" \
-                    -e "s/IPA_IP/$IPA_IP/g" \
-                    -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" \
-                    -e "s/ES_IP/$ES_IP/g" \
-                    -i elasticsearch/elasticsearch.yml
-        docker cp elasticsearch/elasticsearch.yml \
-            es:/usr/share/elasticsearch/config/elasticsearch.yml
-        sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" -i elasticsearch/role_mapping.yml
-        docker exec -itu root es mkdir -p /usr/share/elasticsearch/config/x-pack
-        docker cp elasticsearch/role_mapping.yml \
-            es:/usr/share/elasticsearch/config/role_mapping.yml
-        docker cp certs/CozyMaster/CozyMaster.key \
-            es:/usr/share/elasticsearch/config/x-pack/CozyMaster.key
-        docker cp certs/CozyMaster/CozyMaster.crt \
-            es:/usr/share/elasticsearch/config/x-pack/CozyMaster.crt
-        docker cp certs/ca/ca.crt \
-            es:/usr/share/elasticsearch/config/x-pack/ca.crt
-
-        sleep 60
-
-        while [ "$(curl -I -s -k https://$IPA_USERNAME:$IPA_ADMIN_PASSWORD@es.$DOMAIN:9200 | head -1 | awk '{print $2}')" -ne '200' ]; do
-            sleep 10;
-        done
-
-        curl -XPOST -k https://$IPA_USERNAME:$IPA_ADMIN_PASSWORD@es.$DOMAIN:9200/_xpack/license/start_trial?acknowledge=true
-        docker exec -it es /usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b -u "https://es.$DOMAIN:9200" > es.output
-        dos2unix es.output
-        sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i kibana/kibana.yml
-        sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i logstash/logstash.conf
-        sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i logstash/logstash.yml
-        docker cp logstash/logstash.conf \
-            logstash:/usr/share/logstash/pipeline/logstash.conf
-        docker cp logstash/logstash.yml \
-            logstash:/usr/share/logstash/config/logstash.yml
-        docker restart logstash
-        rm -f es.output
-    else
-        sed -e "s/ES_IP/$ES_IP/g" \
-                    -i elasticsearch/elasticsearch_noxpack.yml
-        docker cp elasticsearch/elasticsearch_noxpack.yml \
-            es:/usr/share/elasticsearch/config/elasticsearch.yml
-    fi
+    bash scripts/install_elasticsearch.sh es elasticsearch_master $ES_IP $ES_IP
+    sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i kibana/kibana.yml
+    sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i logstash/logstash.conf
+    sed -e "s/changeme/$(cat es.output | grep "PASSWORD elastic" | awk '{print $4}')/" -i logstash/logstash.yml
+    docker cp logstash/logstash.conf \
+        logstash:/usr/share/logstash/pipeline/logstash.conf
+    docker cp logstash/logstash.yml \
+        logstash:/usr/share/logstash/config/logstash.yml
+    docker restart logstash
     fi
 ################################################################################
 # INSTALL: ElasticSearch Search Node                                           #
 ################################################################################
     if $IS_ELK_SEARCH_NOTE; then
     bash scripts/interface.sh $ANALYST_INTERFACE $ESSEARCH_IP
-    docker run --restart=always -itd --name essearch -h essearch.$DOMAIN \
-                --network="databridge" \
-                --ip 172.18.0.$(echo $ESSEARCH_IP | awk -F . '{print $4}') \
-                -p $ESSEARCH_IP:9200:9200 \
-                -p $ESSEARCH_IP:9300:9300 \
-                -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                -e ELASTIC_PASSWORD="$IPA_ADMIN_PASSWORD" \
-                elasticsearch
-
-    # Fixes a memory assignemnt issue I still don't completely understand.
-    sysctl vm.drop_caches=3
-    if $ENABLE_XPACK; then
-        docker exec -itu root essearch mkdir -p /usr/share/elasticsearch/config/x-pack
-        docker exec -itu root essearch chown elasticsearch:root /usr/share/elasticsearch/config/x-pack
-        sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" \
-                    -e "s/IPAPASS/$IPA_ADMIN_PASSWORD/g" \
-                    -e "s/LOCALDOMAIN/$DOMAIN/g" \
-                    -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" \
-                    -e "s/IPA_IP/$IPA_IP/g" \
-                    -e "s/ES_IP/$ESSEARCH_IP/g" \
-                    -i elasticsearch/elasticsearch_search.yml
-        docker cp elasticsearch/elasticsearch_search.yml \
-            essearch:/usr/share/elasticsearch/config/elasticsearch.yml
-        sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" -i elasticsearch/role_mapping.yml
-        docker cp elasticsearch/role_mapping.yml \
-            essearch:/usr/share/elasticsearch/config/role_mapping.yml
-        docker cp certs/CozySearch/CozySearch.key \
-            essearch:/usr/share/elasticsearch/config/x-pack/CozySearch.key
-        docker cp certs/CozySearch/CozySearch.crt \
-            essearch:/usr/share/elasticsearch/config/x-pack/CozySearch.crt
-        docker cp certs/ca/ca.crt \
-            essearch:/usr/share/elasticsearch/config/x-pack/ca.crt
-    else
-        sed -e "s/LOCALDOMAIN/$DOMAIN/g" \
-                    -e "s/ES_IP/$ESSEARCH_IP/g" \
-                    -i elasticsearch/elasticsearch_search_noxpack.yml
-        docker cp elasticsearch/elasticsearch_search_noxpack.yml \
-            essearch:/usr/share/elasticsearch/config/elasticsearch.yml
-    fi
-    docker restart es essearch
+    bash scripts/install_elasticsearch.sh essearch elasticsearch_search $ESSEARCH_IP $ES_IP
     fi
 ################################################################################
 # INSTALL: ElasticSearch Data Node(s)                                          #
@@ -209,56 +123,8 @@ firewall-cmd --permanent --add-port=9200/tcp
         TMP_IP=$(echo $ESDATA_IP | cut -d. -f1-3).$(($(echo $ESDATA_IP | cut \
             -d. -f4)+$COUNTER))
         bash scripts/interface.sh $ANALYST_INTERFACE $TMP_IP
-        docker run --restart=always -itd --name esdata$COUNTER \
-                    -h esdata$COUNTER.$DOMAIN \
-                    --network="databridge" \
-                    --ip 172.18.0.$(echo $TMP_IP | awk -F . '{print $4}') \
-                    -p $TMP_IP:9200:9200 \
-                    -p $TMP_IP:9300:9300 \
-                    -e ES_JAVA_OPTS="-Xms$ES_RAM -Xmx$ES_RAM" \
-                    -e ELASTIC_PASSWORD="$IPA_ADMIN_PASSWORD" \
-                    elasticsearch
-
-        # Fixes a memory assignemnt issue I still don't completely understand.
-        sysctl vm.drop_caches=3
-        if $ENABLE_XPACK; then
-            docker exec -itu root esdata$COUNTER mkdir -p /usr/share/elasticsearch/config/x-pack
-            docker exec -itu root esdata$COUNTER chown elasticsearch:root /usr/share/elasticsearch/config/x-pack
-            cp elasticsearch/elasticsearch_data.yml tmp.yml
-            sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" \
-                        -e "s/NUMBER/$COUNTER/g" \
-                        -e "s/IPAPASS/$IPA_ADMIN_PASSWORD/g" \
-                        -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" \
-                    	-e "s/LOCALDOMAIN/$DOMAIN/g" \
-                        -e "s/IPA_IP/$IPA_IP/g" \
-                        -e "s/ES_IP/$TMP_IP/g" \
-                        -i tmp.yml
-            docker cp tmp.yml \
-                esdata$COUNTER:/usr/share/elasticsearch/config/elasticsearch.yml
-            rm -f tmp.yml
-            sed -e "s/IPADOMAIN/dc=${DOMAIN//\./,dc=}/g" \
-                -i elasticsearch/role_mapping.yml
-            docker cp elasticsearch/role_mapping.yml \
-                esdata$COUNTER:/usr/share/elasticsearch/config/role_mapping.yml
-
-            docker cp certs/CozyMaster/CozyMaster.key \
-                esdata$COUNTER:/usr/share/elasticsearch/config/x-pack/CozyData$COUNTER.key
-            docker cp certs/CozyMaster/CozyMaster.crt \
-                esdata$COUNTER:/usr/share/elasticsearch/config/x-pack/CozyData$COUNTER.crt
-            docker cp certs/ca/ca.crt \
-                esdata$COUNTER:/usr/share/elasticsearch/config/x-pack/ca.crt
-        else
-            cp elasticsearch/elasticsearch_data_noxpack.yml tmp.yml
-            sed -e "s/LOCALDOMAIN/$DOMAIN/g" \
-                        -e "s/NUMBER/$COUNTER/g" \
-                        -e "s/ES_IP/$TMP_IP/g" \
-                        -i tmp.yml
-            docker cp tmp.yml \
-                esdata$COUNTER:/usr/share/elasticsearch/config/elasticsearch.yml
-            rm -f tmp.yml
-        fi
-        docker restart esdata$COUNTER
-      let COUNTER=$COUNTER+1
+        bash scripts/install_elasticsearch.sh esdata$COUNTER elasticsearch_data $TMP_IP $ES_IP
+        let COUNTER=$COUNTER+1
     done
     fi
 ################################################################################
@@ -275,8 +141,9 @@ firewall-cmd --permanent --add-port=9200/tcp
     sysctl vm.drop_caches=3
 
     if $ENABLE_XPACK; then
+        sed -i -e "s/REPLACEME/$IPA_ADMIN_PASSWORD/g" -e "s/DOMAIN/$DOMAIN/g" kibana/kibana.yml
         docker cp kibana/kibana.yml kibana:/usr/share/kibana/config/kibana.yml
-        docker cp certs/ca/ca.pem kibana:/usr/share/kibana/config/ca.pem
+        docker cp certs/ca/ca.crt kibana:/usr/share/kibana/config/ca.crt
         docker cp certs/kibana/kibana.key \
             kibana:/usr/share/kibana/config/kibana.key
         docker cp certs/kibana/kibana.crt \

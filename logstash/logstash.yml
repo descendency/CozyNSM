@@ -162,7 +162,7 @@ path.logs: /var/log/logstash
 
 # ------------ X-Pack Settings --------------
 xpack.monitoring.enabled: true
-xpack.monitoring.elasticsearch.url: https://elasticsearch:9200/
+xpack.monitoring.elasticsearch.hosts: ["https://elasticsearch:9200/"]
 xpack.monitoring.elasticsearch.username: elastic
 xpack.monitoring.elasticsearch.password: changeme
-xpack.monitoring.elasticsearch.ssl.ca: "/usr/share/logstash/config/ca.pem"
+xpack.monitoring.elasticsearch.ssl.certificate_authority: "/usr/share/logstash/config/ca.crt"

@@ -1,3 +1,5 @@
+### I'm in the process of updating the documentation. 
+
 ### Introduction
 CozyNSM was designed and created to be a lightweight Security Onion          
 replacement to be deployed in an SELinux Environment. This was tested with   

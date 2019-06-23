@@ -1,34 +1,37 @@
 cluster.name: CozyStack
-node.name: "CozySearch"
+node.name: "ES_NAME"
 node.master: false
 node.data: false
-node.ingest: false
 network.host: 0.0.0.0
 network.publish_host: ES_IP
-discovery.zen.ping.unicast.hosts: ["es.LOCALDOMAIN"]
+bootstrap.memory_lock: false
+discovery.seed_hosts: ES_MASTER_IP
+cluster.initial_master_nodes: ES_MASTER_IP
 xpack.security.enabled: true
-xpack.monitoring.enabled: true
-xpack.graph.enabled: true
-xpack.watcher.enabled: true
-xpack.ssl.key:                     /usr/share/elasticsearch/config/x-pack/CozySearch.key
-xpack.ssl.certificate:             /usr/share/elasticsearch/config/x-pack/CozySearch.crt
-xpack.ssl.certificate_authorities: [ "/usr/share/elasticsearch/config/x-pack/ca.crt" ]
 xpack.security.transport.ssl.enabled: true
-xpack.ssl.verification_mode: certificate
-xpack.ssl.key_passphrase: "SSLKEYPASS"
+xpack.security.transport.ssl.verification_mode: certificate
+xpack.security.transport.ssl.key: /usr/share/elasticsearch/config/certs/elasticsearch.key
+xpack.security.transport.ssl.certificate: /usr/share/elasticsearch/config/certs/elasticsearch.crt
+xpack.security.transport.ssl.certificate_authorities: ["/usr/share/elasticsearch/config/certs/ca.crt"]
 xpack.security.http.ssl.enabled: true
+xpack.security.http.ssl.verification_mode: certificate
+xpack.security.http.ssl.key: /usr/share/elasticsearch/config/certs/elasticsearch.key
+xpack.security.http.ssl.certificate: /usr/share/elasticsearch/config/certs/elasticsearch.crt
+xpack.security.http.ssl.certificate_authorities: ["/usr/share/elasticsearch/config/certs/ca.crt"]
 xpack:
   security:
     authc:
       realms:
-        ldap1:
-          type: ldap
-          order: 0
-          url: "ldap://IPA_IP:389"
-          bind_dn: "uid=admin,cn=users,cn=accounts,IPADOMAIN"
-          bind_password: IPAPASS
-          user_search:
-            base_dn: "cn=users,cn=accounts,IPADOMAIN"
-            attribute: uid
-          group_search:
-            base_dn: "cn=groups,cn=accounts,IPADOMAIN"
+        ldap:
+          ldap1:
+            order: 0
+            url: "ldap://IPA_IP:389"
+            bind_dn: "uid=IPA_USERNAME,cn=users,cn=accounts,IPADOMAIN"
+            user_search:
+              base_dn: "cn=users,cn=accounts,IPADOMAIN"
+              filter: "(uid={0})"
+            group_search:
+              base_dn: "cn=groups,cn=accounts,IPADOMAIN"
+            files:
+              role_mapping: "role_mapping.yml"
+            unmapped_groups_as_roles: false

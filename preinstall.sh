@@ -1,16 +1,11 @@
 ################################################################################
 # Choose Versions (everything else will be 'latest' builds)
 ################################################################################
-ELASTIC_VERSION=6.5.4
+ELASTIC_VERSION=7.1.1
 SPLUNK_VERSION=7.3.0
 CORTEX_VERSION=2.1.3
 THEHIVE_VERSION=3.2.1
-IS_RHEL="false"
-#read -p "Domain? " DOMAIN
-if (($(hostname | grep -o "\." | wc -l) > 1)); then DOMAIN=$(echo `hostname` | sed 's/^[^\.]*\.//g'); else read -p "Domain? " DOMAIN; fi
-echo -e "\n!!You must enter the exact same admin password during install!!"
-read -p "Admin Password? " PASSWORD
-
+#IS_RHEL="false"
 ################################################################################
 # Prepare the directories
 ################################################################################
@@ -18,7 +13,7 @@ if [[ $EUID -ne 0 ]]; then
    echo "This script must be run as root"
    exit 1
 fi
-
+echo "Starting TUI. Please Wait."
 mkdir -p ./rpm/updates
 mkdir -p ./rpm/extras
 mkdir -p ./images
@@ -31,6 +26,19 @@ mkdir -p ./rpm/moloch
 mkdir -p ./rpm/stenographer
 mkdir -p ./moloch
 mkdir -p ./suricata/rules
+
+{
+yum --nogpgcheck -y -q -e 0 install --downloadonly --downloaddir=./rpm/dialog dialog
+yum --nogpgcheck -y -q -e 0 install dialog
+} > /dev/null 2>&1
+
+source scripts/preinstall_tui.sh
+clear
+echo "Starting Downloads..."
+#read -p "Domain? " DOMAIN
+#if (($(hostname | grep -o "\." | wc -l) > 1)); then DOMAIN=$(echo `hostname` | sed 's/^[^\.]*\.//g'); else read -p "Domain? " DOMAIN; fi
+#echo -e "\n!!You must enter the exact same admin password during install!!"
+#read -p "Admin Password? " PASSWORD
 
 ################################################################################
 # RPMs
@@ -202,3 +210,5 @@ bash scripts/generateCerts.sh $DOMAIN $PASSWORD
 sed -e "s/repo_gpgcheck=0/repo_gpgcheck=1/g" -i /etc/yum.conf
 
 tar -czv --remove-files -f install-$(date '+%Y%b%d' | awk '{print toupper($0)}').tar.gz *
+
+echo "Pre-Install has completed."

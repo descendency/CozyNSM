@@ -1,6 +1,5 @@
 instances:
-  - name: "CozyMaster"
-  - name: "CozySearch"
+  - name: "Elasticsearch"
   - name: "kibana"
   - name: "Logstash"
   - name: "FileBeat"

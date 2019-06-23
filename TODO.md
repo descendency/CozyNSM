@@ -1,6 +1,3 @@
 ### To-Do
 
-- [ ] Add support for WinLogBeat for Sysmon and the default Windows logs. (In Logstash)
-- [ ] Add support for OSQuery & Kolide via FileBeat in Logstash.
-- [ ] Edit Logstash configuration files to map all field names to a Common Information Model format.   
-- [ ] Update documentation.
+I need to go through and massively clean up the documentation in this repo. A lot of it is now wildly inaccurate. After that I'll figure out where I want to take this. 

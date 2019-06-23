@@ -1,13 +1,15 @@
+server.name: 'kibana'
 server.host: '0.0.0.0'
-elasticsearch.url: 'https://essearch:9200'
+elasticsearch.hosts: "https://essearch.DOMAIN:9200"
+elasticsearch.ssl.verificationMode: certificate
 elasticsearch.username: "elastic"
 elasticsearch.password: "changeme"
+server.ssl.enabled: true
+server.ssl.key: /usr/share/kibana/config/kibana.key
+server.ssl.certificate: /usr/share/kibana/config/kibana.crt
+server.ssl.keyPassphrase: REPLACEME
+elasticsearch.ssl.certificateAuthorities: [ "/usr/share/kibana/config/ca.crt" ]
 xpack.security.enabled: true
 xpack.monitoring.enabled: true
 xpack.graph.enabled: true
 xpack.reporting.enabled: true
-elasticsearch.ssl.certificateAuthorities: [ "/usr/share/kibana/config/ca.pem" ]
-elasticsearch.ssl.verificationMode: certificate
-server.ssl.enabled: false
-server.ssl.key: /usr/share/kibana/config/kibana.key
-server.ssl.certificate: /usr/share/kibana/config/kibana.crt

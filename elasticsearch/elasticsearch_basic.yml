@@ -1,6 +1,5 @@
 cluster.name: CozyStack
 node.name: "CozyMaster"
-node.master: true
-node.data: true
 network.host: 0.0.0.0
-network.publish_host: ES_IP
+bootstrap.memory_lock: false
+discovery.type: single-node

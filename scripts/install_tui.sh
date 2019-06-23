@@ -13,13 +13,13 @@ function serverroles () {
 
     A datastore receives logs from a sensor and indexes them into a database. The two main tools on a datastore are Elastic Stack and Splunk Enterprise.
 
-    There is also an 'extras' server adds a number of programs to aid collaboration. This adds tools like GoGS, RocketChat, OwnCloud, and TheHive with Cortex. This server also contains the FreeIPA server. A server with the 'extras' role MUST be created first. The ipa-client install will fail without it.
+    There is also a communication server adds a number of programs to aid collaboration. This adds tools like GoGS, RocketChat, OwnCloud, and TheHive with Cortex. This server also contains the FreeIPA server. A server with the 'communication' role MUST be created first. The ipa-client install will fail without it.
 
     Select the server roles for this server below:"
     CHOICE=`dialog --title "Server Type(s)" --backtitle "$BACKTITLE" --stdout --ok-label Next --cancel-label Quit --checklist "$TEXT" 40 80 3 \
             Sensor "" $(if $IS_SENSOR; then echo on; else echo off; fi) \
             Datastore "" $(if $IS_DATASTORE; then echo on; else echo off; fi) \
-            "Extras" "" $(if $IS_APP_SERVER; then echo on; else echo off; fi)`
+            "Communication" "" $(if $IS_APP_SERVER; then echo on; else echo off; fi)`
     RESPONSE=$?
     if [[ $RESPONSE -eq 0 ]]; then
         if [[ $CHOICE == *"Sensor"* ]]; then
@@ -32,7 +32,7 @@ function serverroles () {
         else
                 export IS_DATASTORE="false"
         fi
-        if [[ $CHOICE == *"Extras"* ]]; then
+        if [[ $CHOICE == *"Communication"* ]]; then
                 export IS_APP_SERVER="true"
         else
                 export IS_APP_SERVER="false"
@@ -60,9 +60,9 @@ function configureelk () {
         OPTIONS+=("Search" "" $(if $IS_ELK_SEARCH_NOTE; then echo on; else echo off; fi))
         OPTIONS+=("Master" "" $(if $IS_ELK_MASTER_NOTE; then echo on; else echo off; fi))
     fi
-    if $IS_SENSOR || $IS_DATASTORE; then
-        OPTIONS+=("X-Pack" "" $(if $ENABLE_XPACK; then echo on; else echo off; fi))
-    fi
+    #if $IS_SENSOR || $IS_DATASTORE; then
+    #    OPTIONS+=("X-Pack" "" $(if $ENABLE_XPACK; then echo on; else echo off; fi))
+    #fi
 
     CHOICE=`dialog --title "Elastic Configuration" --backtitle "$BACKTITLE" --stdout --ok-label Next --cancel-label Back --checklist "$TEXT" 40 80 20 \
             "${OPTIONS[@]}"`
@@ -86,11 +86,12 @@ function configureelk () {
         else
                 export IS_ELK_MASTER_NOTE="false"
         fi
-        if [[ $CHOICE == *"X-Pack"* ]]; then
-                export ENABLE_XPACK="true"
-        else
-                export ENABLE_XPACK="false"
-        fi
+        export ENABLE_XPACK="true"
+        #if [[ $CHOICE == *"X-Pack"* ]]; then
+        #        export ENABLE_XPACK="true"
+        #else
+        #        export ENABLE_XPACK="false"
+        #fi
         if $IS_DATASTORE; then
             PANE=5
         else
@@ -232,7 +233,7 @@ function configureappips () {
     OPTIONS=()
     OPTIONS+=("Sensor:" 1 1	"$SENSOR_IP" 	1 30 30 0)
     OPTIONS+=("Datastore:" 2 1	"$DATA_IP" 	2 30 30 0)
-    OPTIONS+=("Sensor:" 3 1	"$APP_IP" 	3 30 30 0)
+    OPTIONS+=("Communication:" 3 1	"$APP_IP" 	3 30 30 0)
     OPTIONS+=("FreeIPA:" 4 1	"$IPA_IP" 	4 30 30 0)
     COUNT=5
     if $ENABLE_ELK; then
@@ -332,23 +333,26 @@ function configureuser () {
     P1=$(echo $CHOICE | cut -d' ' -f2)
     P2=$(echo $CHOICE | cut -d' ' -f3)
     if [[ $RESPONSE -eq 0 ]]; then
-        export IPA_USERNAME=$(echo $CHOICE | cut -d' ' -f1)
-        export IPA_ADMIN_PASSWORD=$P1
-        PANE=11
+        if [ ${#P1} -ge 8 ] && [ $P1 == $P2 ]; then
+            export IPA_USERNAME=$(echo $CHOICE | cut -d' ' -f1)
+            export IPA_ADMIN_PASSWORD=$P1
+            PANE=11
+        else
+            if [[ ${#P1} -lt 8 ]]; then
+                dialog --backtitle "$BACKTITLE" \
+                --title "Error" \
+                --msgbox 'Password is less than 8 characters.' 10 30
+                PANE=10
+            fi
+            if [[ $P1 != $P2 ]]; then
+                dialog --backtitle "$BACKTITLE" \
+                --title "Error" \
+                --msgbox 'Passwords do not match.' 10 30
+                PANE=10
+            fi
+        fi
     else
         PANE=9
-    fi
-    if [[ ${#P1} -lt 8 ]]; then
-        dialog --backtitle "$BACKTITLE" \
-        --title "Error" \
-        --msgbox 'Password is less than 8 characters.' 10 30
-        PANE=10
-    fi
-    if [[ $P1 != $P2 ]]; then
-        dialog --backtitle "$BACKTITLE" \
-        --title "Error" \
-        --msgbox 'Passwords do not match.' 10 30
-        PANE=10
     fi
 }
 
@@ -396,7 +400,7 @@ function startinstall () {
         TEXT+="\n"
     fi
     if $IS_APP_SERVER; then
-        TEXT+=" * Extras: $APP_IP\n"
+        TEXT+=" * Communication: $APP_IP\n"
         if $ENABLE_OWNCLOUD; then
             TEXT+="    - OwnCloud: $OWNCLOUD_IP\n"
         fi

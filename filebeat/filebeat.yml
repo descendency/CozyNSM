@@ -9,13 +9,13 @@
 
 #=========================== Filebeat prospectors =============================
 
-filebeat.prospectors:
+filebeat.inputs:
 
 # Each - is a prospector. Most options can be set at the prospector level, so
 # you can use different prospectors for various configurations.
 # Below are the prospector specific configurations.
 
-- input_type: log
+- type: log
 
   # Paths that should be crawled and fetched. Glob based paths.
   paths:
@@ -25,7 +25,7 @@ filebeat.prospectors:
     #- /var/log/*.log
     #- c:\programdata\elasticsearch\logs\*
 
-- input_type: log
+- type: log
   paths:
     - /data/bro/current/*.log
   exclude_files: ["communication.log", "loaded_scripts.log", "stdout.log", "stderr.log", "packet_filter.log", "notice.log", "reporter.log"]
