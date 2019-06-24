@@ -55,7 +55,6 @@ if [ $CONTAINERNAME == "elasticsearch_master" ]; then
         sleep 10
     done
     curl -XPOST http://$ES_IP:9200/_xpack/license/start_trial?acknowledge=true
-    #docker exec -itu root $CONTAINERNAME sed -i -e 's/#//g' config/elasticsearch.yml
 fi
 docker cp elasticsearch/$CONTAINERNAME.yml $CONTAINERNAME:/usr/share/elasticsearch/config/elasticsearch.yml
 docker restart $CONTAINERNAME

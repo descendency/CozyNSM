@@ -13,7 +13,7 @@ if ! (rpm -qa | grep docker 2>&1 > /dev/null); then
     systemctl enable docker
     mkdir -p /data/docker
     chmod 701 /data/docker
-    sed -i -e "s/ExecStart.*/& -g \/data\/docker/" /etc/systemd/system/multi-user.target.wants/docker.service
+    sed -i -e "s/ExecStart.*/& --data-root \/data\/docker/" $(systemctl status docker | grep loaded | grep -o -P "\([^\s]*;" | sed -e "s/;//" -e "s/(//")
     systemctl daemon-reload
     systemctl start docker
 fi
