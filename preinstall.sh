@@ -1,7 +1,7 @@
 ################################################################################
 # Choose Versions (everything else will be 'latest' builds)
 ################################################################################
-ELASTIC_VERSION=7.1.1
+ELASTIC_VERSION=7.2.0
 SPLUNK_VERSION=7.3.0
 CORTEX_VERSION=2.1.3
 THEHIVE_VERSION=3.2.1
@@ -188,10 +188,10 @@ docker save -o ./images/cortex.docker cortex
 docker rmi thehiveproject/cortex:$CORTEX_VERSION
 
 # Old version of ElasticSearch for TheHive
-docker pull docker.elastic.co/elasticsearch/elasticsearch:5.5.3
-docker tag docker.elastic.co/elasticsearch/elasticsearch:5.5.3 eshive
+docker pull docker.elastic.co/elasticsearch/elasticsearch:5.6.16
+docker tag docker.elastic.co/elasticsearch/elasticsearch:5.6.16 eshive
 docker save -o ./images/eshive.docker eshive
-docker rmi docker.elastic.co/elasticsearch/elasticsearch:5.5.3
+docker rmi docker.elastic.co/elasticsearch/elasticsearch:5.6.16
 
 ################################################################################
 # Big Files
@@ -211,4 +211,7 @@ sed -e "s/repo_gpgcheck=0/repo_gpgcheck=1/g" -i /etc/yum.conf
 
 tar -czv --remove-files -f install-$(date '+%Y%b%d' | awk '{print toupper($0)}').tar.gz *
 
-echo "Pre-Install has completed."
+dialog --backtitle "CozyStack Pre-Install" \
+--title "About" \
+--msgbox 'Pre-Installation Complete.' 10 30
+clear

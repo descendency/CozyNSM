@@ -1,4 +1,6 @@
-### I'm in the process of updating the documentation. 
+### Documentation can be found here:
+
+[Documentation](https://github.com/descendency/CozyNSM-Docs)
 
 ### Introduction
 CozyNSM was designed and created to be a lightweight Security Onion          
@@ -32,6 +34,3 @@ Team 90 and Team 93. Members of both teams have contributed greatly to the
 structure, testing, and motivation to work on this project. Thanks for       
 breaking and demanding as much as you did, because now it is significantly   
 better than before.                                                          
-
-
-[Install Guide](https://github.com/descendency/CozyNSM/blob/master/INSTALL.md)

@@ -200,6 +200,19 @@ docker run --restart=always -itd --name eshive -h eshive.$DOMAIN \
     --network="appbridge" \
     --ip 172.19.0.111 \
     -e "xpack.security.enabled=false" \
+    -e "script.inline=true" \
+    -e "cluster.name=hive" \
+    -e ELASTIC_PASSWORD=$IPA_ADMIN_PASSWORD \
+    eshive
+
+    # Fixes a memory assignemnt issue I still don't completely understand.
+    sysctl vm.drop_caches=3
+
+docker run --restart=always -itd --name eshive2 -h eshive2.$DOMAIN \
+    --network="appbridge" \
+    --ip 172.19.0.113 \
+    -e "xpack.security.enabled=false" \
+    -e "script.inline=true" \
     -e "cluster.name=hive" \
     -e ELASTIC_PASSWORD=$IPA_ADMIN_PASSWORD \
     eshive
@@ -393,12 +406,12 @@ yes $IPA_ADMIN_PASSWORD | docker exec -iu root ipa ipa user-add $IPA_USERNAME \
 docker exec -iu root ipa ipa group-add-member admins --users=$IPA_USERNAME
 
 
-if $ENABLE_HIVE; then
+#if $ENABLE_HIVE; then
 # Create first TheHive user (give it time to reboot)
-curl -XPOST -H 'Content-Type: application/json' -k https://hive.$DOMAIN/api/user -d "{
-  \"login\": \"localadmin\",
-  \"name\": \"Cozy Admin\",
-  \"roles\": [\"read\", \"write\", \"admin\"],
-  \"password\": \"$IPA_ADMIN_PASSWORD\"
-}"
-fi
+#curl -XPOST -H 'Content-Type: application/json' -k https://hive.$DOMAIN/api/user -d "{
+#  \"login\": \"localadmin\",
+#  \"name\": \"Cozy Admin\",
+#  \"roles\": [\"read\", \"write\", \"admin\"],
+#  \"password\": \"$IPA_ADMIN_PASSWORD\"
+#}"
+#fi
