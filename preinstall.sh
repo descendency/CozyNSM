@@ -1,7 +1,7 @@
 ################################################################################
 # Choose Versions (everything else will be 'latest' builds)
 ################################################################################
-ELASTIC_VERSION=7.2.0
+ELASTIC_VERSION=7.5.2
 SPLUNK_VERSION=7.3.0
 CORTEX_VERSION=2.1.3
 THEHIVE_VERSION=3.2.1
