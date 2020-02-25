@@ -46,4 +46,10 @@ systemctl restart sssd
 cat /etc/sssd/sssd.conf.bak > /etc/sssd/sssd.conf
 rm -rf /etc/sssd/sssd.conf.bak
 
+# FreeIPA will handle NTP Services. NTPd disabled to stop it from binding ports
+if $IS_APP_SERVER; then
+    systemctl stop ntpd
+    systemctl disable ntpd
+fi
+
 init 6

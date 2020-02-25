@@ -473,7 +473,11 @@ function configuresensor () {
             export STENO_THREADS=$(echo $CHOICE | cut -d' ' -f1)
         fi
         if $ENABLE_ELK; then
-            PANE=4
+            if $IS_DATASTORE; then
+                PANE=4
+            else
+                PANE=6
+            fi
         else
             PANE=6
         fi

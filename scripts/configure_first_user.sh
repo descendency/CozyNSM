@@ -35,3 +35,35 @@ systemctl enable nslcd
 # Remove root access
 sed -e 's/^#PermitRootLogin yes$/PermitRootLogin no/g' -i /etc/ssh/sshd_config
 sed -e 's@^\(root.*\)/bin/bash$@\1/sbin/nologin@g' -i /etc/passwd
+
+echo $IPA_ADMIN_PASSWORD | kinit admin
+if $ENABLE_ELK; then
+    ipa dnsrecord-add $DOMAIN elasticsearch --a-rec=$ES_IP
+    ipa dnsrecord-add $DOMAIN es --a-rec=$ES_IP
+    ipa dnsrecord-add $DOMAIN essearch --a-rec=$ESSEARCH_IP
+    ipa dnsrecord-add $DOMAIN logstash --a-rec=$ES_IP
+    ipa dnsrecord-add $DOMAIN kibana --a-rec=$KIBANA_IP
+fi
+
+if $ENABLE_OWNCLOUD; then
+    ipa dnsrecord-add $DOMAIN owncloud --a-rec=$OWNCLOUD_IP
+    ipa dnsrecord-add $DOMAIN cloud --a-rec=$OWNCLOUD_IP
+fi
+
+if $ENABLE_GOGS; then
+    ipa dnsrecord-add $DOMAIN gogs --a-rec=$GOGS_IP
+fi
+
+if $ENABLE_CHAT; then
+    ipa dnsrecord-add $DOMAIN chat --a-rec=$CHAT_IP
+    ipa dnsrecord-add $DOMAIN mongodb --a-rec=172.19.0.4
+fi
+
+if $ENABLE_HIVE; then
+    ipa dnsrecord-add $DOMAIN cortex --a-rec=$CORTEX_IP
+    ipa dnsrecord-add $DOMAIN hive --a-rec=$HIVE_IP
+fi
+
+if $ENABLE_SPLUNK; then
+    ipa dnsrecord-add $DOMAIN splunk --a-rec=$SPLUNK_IP
+fi

@@ -2,6 +2,9 @@
 echo "net.ipv4.conf.all.forwarding=1" >> /usr/lib/sysctl.d/00-system.conf
 echo "vm.max_map_count=1073741824" >> /usr/lib/sysctl.d/00-system.conf
 
+# disable NTPD, because it blocks IPA from working correctly, chrony manages local time.
+systemctl disable ntpd
+
 # Routes packets internally for docker
 sysctl -w net.ipv4.conf.all.forwarding=1
 
@@ -404,7 +407,6 @@ yes $IPA_ADMIN_PASSWORD | docker exec -iu root ipa ipa user-add $IPA_USERNAME \
 
 # add IPA user to admins
 docker exec -iu root ipa ipa group-add-member admins --users=$IPA_USERNAME
-
 
 #if $ENABLE_HIVE; then
 # Create first TheHive user (give it time to reboot)

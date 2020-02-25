@@ -22,6 +22,7 @@ docker run --restart=always -itd --name $CONTAINERNAME -h $NAME.$DOMAIN \
 sysctl vm.drop_caches=3
 docker cp elasticsearch/elasticsearch_basic.yml $CONTAINERNAME:/usr/share/elasticsearch/config/elasticsearch.yml
 docker restart $CONTAINERNAME
+{
 echo $IPA_ADMIN_PASSWORD | docker exec -i $CONTAINERNAME /bin/bash -c "cat | bin/elasticsearch-keystore add --stdin xpack.security.transport.ssl.keystore.secure_password"
 echo $IPA_ADMIN_PASSWORD | docker exec -i $CONTAINERNAME /bin/bash -c "cat | bin/elasticsearch-keystore add --stdin xpack.security.transport.ssl.truststore.secure_password"
 echo $IPA_ADMIN_PASSWORD | docker exec -i $CONTAINERNAME /bin/bash -c "cat | bin/elasticsearch-keystore add --stdin xpack.security.http.ssl.keystore.secure_password"
@@ -29,6 +30,7 @@ echo $IPA_ADMIN_PASSWORD | docker exec -i $CONTAINERNAME /bin/bash -c "cat | bin
 echo $IPA_ADMIN_PASSWORD | docker exec -i $CONTAINERNAME /bin/bash -c "cat | bin/elasticsearch-keystore add --stdin xpack.security.http.ssl.secure_key_passphrase"
 echo $IPA_ADMIN_PASSWORD | docker exec -i $CONTAINERNAME /bin/bash -c "cat | bin/elasticsearch-keystore add --stdin xpack.security.transport.ssl.secure_key_passphrase"
 echo $IPA_ADMIN_PASSWORD | docker exec -i $CONTAINERNAME /bin/bash -c "cat | bin/elasticsearch-keystore add --stdin xpack.security.authc.realms.ldap.ldap1.secure_bind_password"
+} > /dev/null 2>&1
 
 docker exec -u root $CONTAINERNAME mkdir config/certs
 docker exec -u root $CONTAINERNAME chown elasticsearch:elasticsearch config/certs

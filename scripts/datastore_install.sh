@@ -61,14 +61,15 @@ firewall-cmd --permanent --add-port=9200/tcp
     # Fixes a memory assignemnt issue I still don't completely understand.
     sysctl vm.drop_caches=3
 
-    pushd ./logstash
-    tar xzvf GeoLite2-City.tar.gz --strip-components=1
-    popd
-    docker exec -iu logstash logstash mkdir /usr/share/logstash/GeoIP
-    docker cp logstash/GeoLite2-City.mmdb \
-        logstash:/usr/share/logstash/GeoIP/GeoLite2-City.mmdb
-    docker exec -iu root logstash chown logstash:logstash \
-        /usr/share/logstash/GeoIP/GeoLite2-City.mmdb
+    # Removing GeoIP Database as it is worthless. 
+    #pushd ./logstash
+    #tar xzvf GeoLite2-City.tar.gz --strip-components=1
+    #popd
+    #docker exec -iu logstash logstash mkdir /usr/share/logstash/GeoIP
+    #docker cp logstash/GeoLite2-City.mmdb \
+    #    logstash:/usr/share/logstash/GeoIP/GeoLite2-City.mmdb
+    #docker exec -iu root logstash chown logstash:logstash \
+    #    /usr/share/logstash/GeoIP/GeoLite2-City.mmdb
     if $ENABLE_XPACK; then
         sed -i -e "s/SSLKEYPASS/$IPA_ADMIN_PASSWORD/g" logstash/logstash.conf
         docker cp logstash/logstash.conf \

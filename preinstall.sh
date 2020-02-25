@@ -197,7 +197,7 @@ docker rmi docker.elastic.co/elasticsearch/elasticsearch:5.6.16
 # Big Files
 ################################################################################
 curl -L -o ./suricata/rules/emerging-all.rules https://rules.emergingthreats.net/open/snort-2.9.0/emerging-all.rules
-curl -L -o ./logstash/GeoLite2-City.tar.gz http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz
+#curl -L -o ./logstash/GeoLite2-City.tar.gz http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.tar.gz
 
 ################################################################################
 # Generate SSL Certificates (This needs to be done yearly!)
